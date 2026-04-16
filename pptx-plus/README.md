@@ -24,7 +24,8 @@ pptx-plus/
 │   └── ppt-report/
 │       └── SKILL.md            # 主工作流 skill
 ├── tools/
-│   ├── content-enricher.md     # 内容丰富工具（L1-L4）
+│   ├── content-enricher/       # 内容丰富工具（L1-L4）
+│   │   └── SKILL.md
 │   └── pptx/                   # PPT 生成工具
 │       ├── SKILL.md
 │       ├── pptxgenjs.md        # 从零创建 PPT

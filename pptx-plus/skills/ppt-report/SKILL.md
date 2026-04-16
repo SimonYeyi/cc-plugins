@@ -1,6 +1,6 @@
 ---
 name: ppt-report
-description: "Use this skill any time a .pptx file is involved in any way — as input, output, or both. This includes: creating slide decks, pitch decks, or presentations; reading, parsing, or extracting text from any .pptx file (even if the extracted content will be used elsewhere, like in an email or summary); editing, modifying, or updating existing presentations; combining or splitting slide files; working with templates, layouts, speaker notes, or comments. Trigger whenever the user mentions \\deck,\\ \\slides,\\ \\presentation,\\ or references a .pptx filename, regardless of what they plan to do with the content afterward. If a .pptx file needs to be opened, created, or touched, use this skill."
+description: "Use this skill any time a .pptx file is involved in any way — as input, output, or both. This includes: creating slide decks, pitch decks, or presentations; reading, parsing, or extracting text from any .pptx file (even if the extracted content will be used elsewhere, like in an email or summary); editing, modifying, or updating existing presentations; combining or splitting slide files; working with templates, layouts, speaker notes, or comments. Trigger whenever the user mentions \"deck,\" \"slides,\" \"presentation,\" or references a .pptx filename, regardless of what they plan to do with the content afterward. If a .pptx file needs to be opened, created, or touched, use this skill."
 ---
 
 # PPT 分享生成工作流
@@ -36,7 +36,6 @@ description: "Use this skill any time a .pptx file is involved in any way — as
 - 使用 Read 工具读取引用文件；调用 feishu-doc skill 读取飞书文档
 - 整合所有来源形成统一的输入摘要
 - 推导话题 slug 用于路径构建
-- 读取 tools/content-enricher.md 和 tools/pptx/SKILL.md 作为工具指南
 **输出：** [STEP1] 输入摘要
 
 ---
@@ -82,7 +81,7 @@ description: "Use this skill any time a .pptx file is involved in any way — as
 
 ### STEP 5：丰富内容
 
-**操作：** 基于 STEP1 的原始材料、STEP2 的大纲和选定的丰富级别（Lx），直接丰富 PPT 内容。L3/L4 级别需触发网络搜索补充数据。
+**操作：** 基于 STEP1 的原始材料、STEP2 的大纲和选定的丰富级别（Lx），直接丰富 PPT 内容。L3/L4 级别需触发网络搜索补充数据。读取 tools/content-enricher/SKILL.md 作为工具指南。
 
 **输出：** [STEP5] 丰富完成
 
@@ -110,8 +109,9 @@ description: "Use this skill any time a .pptx file is involved in any way — as
 **操作：**
 1. 切换到 output 目录：`cd ~/.pptx-plus/<话题>/`
 2. 读取 input/content.md
-3. 使用 tools/pptx/SKILL.md 中的工具生成 PPT
-4. 生成的 PPT 文件保存在 output/ 目录
+3. 读取 tools/pptx/SKILL.md 作为工具指南
+4. 使用其中的工具生成 PPT
+5. 生成的 PPT 文件保存在 output/ 目录
 
 **输出：** [STEP7] PPT生成完成
 

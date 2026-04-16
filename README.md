@@ -10,67 +10,56 @@ Claude Code 插件市场，管理多个插件项目。
 
 ## 添加市场
 
-### 方式一：GitHub 市场
+### 方式一：使用命令添加
 
-在 `~/.claude/settings.json` 的 `extraKnownMarketplaces` 中添加：
-
+GitHub 市场：
+```bash
+/plugin marketplace add SimonYeyi/cc-plugins
+```
+或手动编辑 settings.json：
 ```json
 "extraKnownMarketplaces": {
-  "claude-plugins": {
+  "cc-plugins": {
     "source": {
       "source": "github",
-      "repo": "SimonYeyi/claude-plugins"
+      "repo": "SimonYeyi/cc-plugins"
     }
   }
 }
 ```
 
-> Claude Code 重启后生效。
->
-> **注意**：目前没有自动化命令添加市场，需要手动编辑 `settings.json`。
-
-### 方式二：本地市场（开发时使用）
-
-本地开发时，可以添加本地市场目录：
-
+本地市场：
+```bash
+/plugin marketplace add D:/path/to/cc-plugins
+```
+或手动编辑 settings.json：
 ```json
 "extraKnownMarketplaces": {
-  "local-dev": {
+  "cc-plugins": {
     "source": {
-      "source": "local",
-      "path": "D:/path/to/claude-plugins"
+      "source": "directory",
+      "path": "D:/path/to/cc-plugins"
     }
   }
 }
-```
-
-然后安装本地插件：
-
-```bash
-/plugin install pptx-plus@local-dev
 ```
 
 ## 安装插件
 
 ```bash
-/plugin install <插件名>@claude-plugins
-```
-
-例如安装 pptx-plus：
-```bash
-/plugin install pptx-plus@claude-plugins
+/plugin install <插件名>@cc-plugins
 ```
 
 ## 升级插件
 
 ```bash
-/plugin update <插件名>@claude-plugins
+/plugin update <插件名>@cc-plugins
 ```
 
 ## 卸载插件
 
 ```bash
-/plugin uninstall <插件名>@claude-plugins
+/plugin uninstall <插件名>@cc-plugins
 ```
 
 ## 本地开发
@@ -78,7 +67,7 @@ Claude Code 插件市场，管理多个插件项目。
 使用 `--plugin-dir` 参数启动 Claude Code：
 
 ```bash
-claude --plugin-dir D:/path/to/claude-plugins/pptx-plus
+claude --plugin-dir D:/path/to/cc-plugins/<插件名>
 ```
 
 ## 添加新插件
@@ -88,7 +77,7 @@ claude --plugin-dir D:/path/to/claude-plugins/pptx-plus
 
 ```json
 {
-  "name": "claude-plugins",
+  "name": "cc-plugins",
   "plugins": [
     {
       "name": "新插件名",

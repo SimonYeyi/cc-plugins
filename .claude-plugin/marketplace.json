@@ -1,5 +1,5 @@
 {
-  "name": "claude-plugins",
+  "name": "cc-plugins",
   "description": "Claude Code plugin marketplace",
   "owner": {
     "name": "Yeyi",
@@ -10,10 +10,7 @@
       "name": "pptx-plus",
       "description": "通过智能工作流生成专业分享 PPT 的插件。将简略材料转换为可用于团队分享的专业演示文稿。",
       "version": "1.0.0",
-      "source": {
-        "source": "local",
-        "path": "./pptx-plus"
-      }
+      "source": "./pptx-plus"
     }
   ]
 }

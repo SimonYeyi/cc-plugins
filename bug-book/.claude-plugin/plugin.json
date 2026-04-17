@@ -1,0 +1,25 @@
+{
+  "name": "bug-book",
+  "version": "0.1.0",
+  "description": "错题集：让 AI 记住历史问题的现象、根因、解决方案，防止重复犯错",
+  "skills": {
+    "bug-record": {
+      "path": "skills/bug-record/SKILL.md",
+      "description": "记录问题：AI 被纠正、用户抱怨、发现根因时触发"
+    },
+    "bug-search": {
+      "path": "skills/bug-search/SKILL.md",
+      "description": "搜索问题：用户询问相关 bug、查找文件历史时触发"
+    },
+    "bug-organize": {
+      "path": "skills/bug-organize/SKILL.md",
+      "description": "整理错题集：用户要求整理、清理、归类时触发"
+    }
+  },
+  "agents": {
+    "bug-curator": {
+      "path": "agents/bug-curator.md",
+      "description": "错题克星：主动召回、验证追踪、复发处理时调用"
+    }
+  }
+}

@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 测试覆盖
+htmlcov/
+.coverage
+.pytest_cache/

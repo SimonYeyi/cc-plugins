@@ -1,4 +1,4 @@
-# Claude Plugins
+# Claude Code Plugins
 
 Claude Code 插件市场，管理多个插件项目。
 

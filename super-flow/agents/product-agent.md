@@ -33,6 +33,11 @@ tools: ["Read", "Write", "Grep", "Glob", "Bash", "Agent"]
   4. 主控再次展示完整SPEC给创意提出者确认
   5. **循环直到创意提出者明确表示没有任何意见** → 才能写入
 
+**重要区分**：
+- **确认**：由创意提出者主观判断SPEC是否符合自己的创意/需求，**不是评审**
+- **评审**：由SPEC审查Agent客观验证SPEC是否完整执行了Creative Brief或brainstorming结果，是独立的内循环流程
+- 两者独立：确认通过后，还需经过SPEC审查Agent评审才能进入下一阶段
+
 **通信机制**：所有brainstorming对话必须通过主控转发，创意Agent/用户不与产品Agent直接交流
 
 ---

@@ -79,6 +79,10 @@ description: "SuperFlow — full-stack autonomous development workflow. MUST use
 4. 主控再次展示完整SPEC给创意提出者确认
 5. **循环直到创意提出者明确表示没有任何意见** → 才能写入
 
+**重要区分**：
+- **确认**：由创意提出者（创意Agent/用户）主观判断SPEC是否符合自己的创意/需求，**不是评审**
+- **评审**：由SPEC审查Agent客观验证SPEC是否完整执行了Creative Brief或brainstorming结果，是独立的内循环流程
+
 **关键原则：**
 - 创意 Agent 决定"做什么、为什么做" — 产品 Agent 决定"怎么做、功能细节"
 - 如果 SPEC 草稿与创意方向有偏差，创意 Agent 有权要求修正

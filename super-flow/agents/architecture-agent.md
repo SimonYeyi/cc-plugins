@@ -15,6 +15,7 @@ tools: ["Read", "Write", "Grep", "Glob", "Bash", "Edit", "Agent"]
 
 **输入**：
 - SPEC.md
+- 或评审 Agent 的修改意见
 
 **输出**：
 - `docs/superflow/plans/YYYY-MM-DD-feature-name-plan.md`
@@ -23,24 +24,28 @@ tools: ["Read", "Write", "Grep", "Glob", "Bash", "Edit", "Agent"]
 
 ## 工作流程
 
-### 阶段一：设计实现计划
+### 阶段一：设计实现计划（输入为 SPEC.md 时）
 1. **读取** SPEC.md，理解所有验收标准
 2. **评估** SPEC可实现性（技术可行性、复杂度、依赖、风险）
 3. **设计** 架构方案（模块划分、接口设计、数据流、设计模式）
 4. **分解** Task（按实现顺序，每个Task包含Files和Steps）
 5. **检查** Spec覆盖（每条验收标准有对应Task）
-6. **生成** 实现计划文档（在上下文中，不写入文件）
+6. **生成** 实现计划文档，写入到 `docs/superflow/plans/YYYY-MM-DD-feature-name-plan.md`
+
+### 阶段一（评审意见输入）：处理评审结果
+**入口**：主控转发的评审结果
+1. **理解** 评审结果类型和count
+2. **判断**：
+   - **通过** → 确认评审通过，通知主控继续
+   - **有意见，count < 5** → 修复/反驳评审意见
+   - **有意见，count = 5** → 汇总分歧上报主控裁断
+   - **count = 6（主控裁决）** → 必须遵守，执行裁决，更新实现计划，上报评审通过
 
 ### 阶段二：评审
-1. **dispatch** plan-reviewer 进行计划评审
-2. **评审循环**：
-   - 根据评审意见重新设计/修改计划
-   - 最多5次，5次后仍分歧升级主控裁断
-3. **评审通过后写入文件**
+1. **dispatch** plan-reviewer 进行计划评审，传递SPEC.md、实现计划文档
 
 ### 阶段三：交付
-1. **写入** 实现计划到 `docs/superflow/plans/YYYY-MM-DD-feature-name-plan.md`
-2. **通知主控** 评审通过
+1. **通知主控** 评审结果
 
 ---
 
@@ -175,8 +180,6 @@ tools: ["Read", "Write", "Grep", "Glob", "Bash", "Edit", "Agent"]
    - **逻辑矛盾**（如同时要求实时性和离线可用）
 3. 提出替代方案或修改建议
 4. 报告给主控，打回产品Agent修改SPEC文档
-5. **重新进入SPEC评审循环**（由 SPEC 评审 Agent 验证修改后的 SPEC）
-6. SPEC评审通过后重新进入架构流程
 
 ---
 

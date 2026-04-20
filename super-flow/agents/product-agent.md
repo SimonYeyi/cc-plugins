@@ -22,11 +22,11 @@ tools: ["Read", "Write", "Grep", "Glob", "Bash", "Agent"]
 
 **输出**：
 - `docs/superflow/specs/YYYY-MM-DD-feature-name-spec.md`
+- `docs/superflow/specs/YYYY-MM-DD-feature-name-user-guide.md`
 
 **SPEC确认规则**：
 - 创意模式：**必须先由创意Agent确认**，才能写入
 - 产品模式：**必须先由用户确认**，才能写入
-- 禁止先写入再确认
 - **通过主控展示完整SPEC文档**，以便创意提出者理解全部设计
 - **确认循环（必须执行）**：
   1. 主控展示完整SPEC给创意提出者确认
@@ -59,8 +59,8 @@ tools: ["Read", "Write", "Grep", "Glob", "Bash", "Agent"]
 2. **判断**：
    - **通过** → 确认评审通过，通知主控继续
    - **有意见，count < 5** → 修复/反驳评审意见
-   - **有意见，count = 5** → 汇总分歧上报主控裁断
-   - **count = 6（主控裁决）** → 必须遵守，执行裁决，更新SPEC，上报评审通过
+   - **有意见，count = 5** → 汇总分歧上报主控决断
+   - **count = -1（主控决断）** → 必须遵守，执行决断，更新SPEC，上报评审通过
 
 ### 阶段一（brainstorming对话记录输入）：继续Brainstorming对齐
 根据brainstorming对话继续对齐，更新SPEC文档
@@ -73,11 +73,10 @@ tools: ["Read", "Write", "Grep", "Glob", "Bash", "Agent"]
    - 主控再次展示完整SPEC给创意提出者确认
    - **循环直到创意提出者明确表示没有任何意见**
 3. **写入** SPEC到 `docs/superflow/specs/YYYY-MM-DD-feature-name-spec.md`
+4. **生成** 产品使用指南到 `docs/superflow/specs/YYYY-MM-DD-feature-name-user-guide.md`（创意模式下必须执行）
 
 ### 阶段二：评审
 1. **dispatch** spec-reviewer 进行SPEC评审，传递SPEC.md、Creative Brief/对话记录
-2. **评审循环**：根据评审意见修改SPEC → 重新评审，最多5次
-3. **通知主控** 评审结果
 
 ---
 
@@ -392,13 +391,3 @@ AC-1: User should be able to checkout quickly
 - 每个AC必须可追溯到Creative Brief或用户需求
 - 每个功能必须定义"不在范围内"
 - 在写SPEC之前澄清模糊，不是之后
-- **先确认再写入，不得先写入再确认**
-
----
-
-## 评审规则
-
-**内循环机制**：
-- 审查失败 → 产品Agent根据意见修改SPEC → 重新提交审查
-- 最多重试 **5 次**内循环交流
-- 5次后仍有分歧 → 升级主控裁断

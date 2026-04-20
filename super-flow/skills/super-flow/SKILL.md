@@ -15,6 +15,18 @@ description: "SuperFlow — full-stack autonomous development workflow. MUST use
 | `/superflow <有主题但无明确功能细节>`    | 询问选择：创意模式 / 产品模式 |
 | `/superflow <有主题有细节> 或 <模糊主题>` | 直接进入**产品模式**（brainstorm 流程，探讨需求） |
 
+**主控询问固定格式**：
+当需要询问用户选择模式时，主控应使用以下格式：
+```
+主控：我检测到你提供了一个主题，但功能细节不够明确。
+请选择工作模式：
+
+| 序号 | 模式 | 适用场景 |
+|:----:|------|---------|
+| 1 | 创意模式 | 全新功能、探索性需求、需要创新方案 |
+| 2 | 产品模式 | 需求明确、有参考实现、渐进式功能 |
+```
+
 ## 完整流程
 
 ```
@@ -86,13 +98,13 @@ description: "SuperFlow — full-stack autonomous development workflow. MUST use
 **关键原则：**
 - 创意 Agent 决定"做什么、为什么做" — 产品 Agent 决定"怎么做、功能细节"
 - 如果 SPEC 草稿与创意方向有偏差，创意 Agent 有权要求修正
-- 先确认再写入，不得先写入再确认
 
-## 沟通规范：
+**主控信息展示要求**：
+- 主控在协调流程时，**必须将Agent间的信息传递和交流展示给用户**
+- 包括但不限于：转发内容、评审意见、反馈回复、brainstorming对话
+- 让用户了解流程进展，而非黑箱操作
 - 所有 Agent 在陈述流程、汇报进展时，**必须加上 agent 名称前缀**
 - 格式：`主控：`、`创意Agent：`、`产品Agent：`、`架构Agent：`、`开发Agent：`、`XX评审Agent：`等
-- 示例：`主控：启动创意流程` → `创意Agent：生成创意Brief` → `创意评审团：评审通过`
-- 便于主控追踪流程节点和责任归属
 
 ## 角色与职责
 
@@ -167,7 +179,7 @@ description: "SuperFlow — full-stack autonomous development workflow. MUST use
 
 **主控决断执行规则**：
 - 主控决断 = **做出决定** + **指明下一步** + **转发决断意见给主干Agent**
-- 主控决断后，**必须转发决断意见（count=6）给主干Agent**，否则流程中断
+- 主控决断后，**必须转发决断意见（count=-1）给主干Agent**，否则流程中断
 - 主控决断内容示例：
   - "采用方案A，继续进入架构流程"
   - "分歧是细节问题，记录在案，流程继续"
@@ -184,17 +196,13 @@ description: "SuperFlow — full-stack autonomous development workflow. MUST use
 - 主控追踪每个阶段的评审循环次数，每阶段开始时 count = 0
 - 转发评审结果给主干Agent时附带count值
 - 主控**不自行判断**，根据主干Agent的反馈决定下一步
-- 主干Agent返回"通过" → 进入下一阶段；"修复" → count+1重新dispatch；"汇总分歧" → 主控决断后**必须转发决断意见（count=6）**给主干Agent
+- 主干Agent返回"通过" → 进入下一阶段；"修复" → count+1重新dispatch；"汇总分歧" → 主控决断后**必须转发决断意见（count=-1）**给主干Agent
 
 **count值含义**：
 | count | 含义 |
 |-------|------|
 | 0~5 | 评审循环次数 |
-| 6 | 主控决断意见（主干Agent必须遵守） |
-
-**测试Agent特殊协议**：
-- 测试Agent反馈"功能不通过" → 主控转发给开发Agent修复
-- 开发Agent修复完成 → 主控转发给测试Agent继续执行
+| -1 | 主控决断意见（主干Agent必须遵守） |
 
 **终止条件**：全部问题修复，所有评审/审查 agent 全部通过，且主控确认。
 

@@ -9,15 +9,15 @@ description: "SuperFlow — full-stack autonomous development workflow. MUST use
 
 ## 入口分支
 
-| 场景                             | 触发 |
-|--------------------------------|------|
-| `/superflow`（无任何参数）            | 直接进入**创意模式** |
-| `/superflow <有主题但细节不明确>`       | 询问选择：创意模式 / 产品模式 |
-| `/superflow <有主题有细节> 或 <模糊主题>` | 直接进入**产品模式**（brainstorm 流程，探讨需求） |
+| 场景                               | 触发 |
+|----------------------------------|------|
+| `/superflow`（无任何参数）              | 直接进入**创意模式** |
+| `/superflow <有主题但细节不明确>`         | 询问选择：创意模式 / 产品模式 |
+| `/superflow <有主题有细节> 或 <无法识别主题>` | 直接进入**产品模式**（brainstorm 流程，探讨需求） |
 
-**主控替用户决断的最高原则**：
-- 创意模式定位为全自动生产线，**无论何时**都不能把问题抛给用户（导致流程阻塞），遇到的所有问题主控必须做出决断，确保流程继续
-- 产品模式定位为半自动生产线，除 **产品 Agent 与用户的 Brainstorming 以及 请求用户确认 SPEC**需要用户参与，其余情况都不能把问题抛给用户（导致流程阻塞），遇到的所有问题主控必须做出决断，确保流程继续
+**主控决断的最高原则**：
+- **创意模式**：全自动生产线，**无论何时**都不能把问题抛给用户，必须自行决断确保流程继续
+- **产品模式**：半自动生产线，仅「产品 Agent 与用户 Brainstorming」和「请求用户确认 SPEC」允许用户参与，其余情况必须自行决断确保流程继续
 
 **主控询问固定格式**：
 当需要询问用户选择模式时，主控应使用以下格式：
@@ -73,8 +73,8 @@ description: "SuperFlow — full-stack autonomous development workflow. MUST use
 - SPEC确认后，不可直接进入下一阶段，必须先 dispatch 产品Agent 继续完成内部流程
 
 **创意Agent与产品Agent**（创意模式下）
-- **展示** Brainstorming对话给创意Agent
-- **dispatch** 创意Agent 回复问题
+- **展示** Brainstorming对话
+- **dispatch** 创意Agent 回复Brainstorming对话
 - 此时主控不提供任何决断
 
 **产品Agent与用户**（产品模式下）
@@ -178,11 +178,15 @@ description: "SuperFlow — full-stack autonomous development workflow. MUST use
 
 ## 评审/审查意见处理原则
 
+**主控处理评审反馈的原则**
+- 评审Agent反馈评审通过 → dispatch 主干Agent 闭合流程
+- 主干Agent反馈评审通过 → 真正的阶段流程结束，进入下一个阶段
+
 **主控评审循环控制**：
 - 主控追踪每个阶段的评审循环次数，每阶段开始时 count = 0
 - **dispatch** 主干Agent处理评审意见，附带count值
 - 主控**不自行判断**，根据主干Agent的反馈决定下一步
-- 主干Agent返回"通过" → 进入下一阶段；"修复" → count+1重新dispatch；"汇总分歧" → 主控决断后**dispatch主干Agent执行决断（count=-1）**
+- 主干Agent返回"通过" → 进入下一阶段；"修复" → 主控 count+1 → 重新 dispatch 主干Agent（附带更新后的count值）；"汇总分歧" → 主控决断后 dispatch 主干Agent执行决断（count=-1）
 
 **count值含义**：
 | count | 含义 |

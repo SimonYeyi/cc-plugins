@@ -33,7 +33,7 @@ tools: ["Read", "Write", "Grep", "Glob", "Bash", "Edit", "Agent"]
 6. **生成** 实现计划文档，写入到 `docs/superflow/plans/YYYY-MM-DD-feature-name-plan.md`
 7. **dispatch** plan-reviewer 进行计划评审
 
-### 当收到评审意见时（处理评审结果）
+### 当收到评审结果时
 1. **理解** 评审结果类型和count
 2. **判断**：
    - **通过** → 确认评审通过，上报评审通过

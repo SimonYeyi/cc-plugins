@@ -32,7 +32,7 @@ tools: ["Read", "Write", "Grep", "Glob", "Bash", "Edit", "TodoWrite", "Agent"]
 4. **确保** 代码可运行、无编译错误、无回归
 5. **dispatch** implementation-reviewer（3个并行实例）进行评审
 
-### 当收到评审意见时（处理评审结果）
+### 当收到评审结果时
 1. **理解** 评审结果类型和count
 2. **判断**：
    - **通过** → 确认评审通过，上报评审通过

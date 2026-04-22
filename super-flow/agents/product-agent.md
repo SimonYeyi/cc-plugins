@@ -40,15 +40,15 @@ tools: ["Read", "Write", "Grep", "Glob", "Bash", "Agent"]
 2. **请求与用户brainstorm式对话**：一次一问，逐步确认
 3. **整合** brainstorming所有内容
 4. **生成** SPEC到 `docs/superflow/specs/YYYY-MM-DD-feature-name-spec.md`
-5. **请求与用户确认** SPEC 是否满足需求，需要向用户展示 SPEC 详细内容，以便创意提出者理解全部设计
+5. **请求与用户确认** SPEC 是否满足需求，向用户展示 SPEC 详细内容，以便创意提出者理解全部设计
 
-### 当收到评审意见时（处理评审结果）
+### 当收到评审结果时
 1. **理解** 评审结果类型和count
 2. **判断**：
-    - **通过** → 进入**当需要上报主控评审通过时**
+    - **通过** → 进入**上报评审通过**
     - **有意见，count < 5** → 修复/反驳评审意见
     - **有意见，count = 5** → 汇总分歧上报主控决断
-    - **count = -1（主控决断）** → 必须遵守，执行决断，更新SPEC，进入**当需要上报主控评审通过时**
+    - **count = -1（主控决断）** → 必须遵守，执行决断，更新SPEC，进入**上报评审通过**
 
 ### 当收到brainstorming对话记录时（继续Brainstorming对齐）
 根据brainstorming对话继续对齐，更新SPEC文档
@@ -58,7 +58,9 @@ tools: ["Read", "Write", "Grep", "Glob", "Bash", "Agent"]
 - 是: **dispatch** spec-reviewer 进行SPEC评审
 - 否: 根据反馈更新SPEC，再次发起SPEC确认
 
-### 当需要上报主控评审通过时
+---
+
+### 上报评审通过
 1. **生成** 产品使用指南到 `docs/superflow/specs/YYYY-MM-DD-feature-name-user-guide.md`
 2. **上报** 评审通过
 

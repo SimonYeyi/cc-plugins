@@ -52,8 +52,11 @@ super-flow/
 │   └── implementation-reviewer.md  # 实现评审团（完整性+代码质量+安全）
 ├── docs/
 │   └── superflow/
-│       └── specs/
-│           └── superflow-design.md  # 设计文档
+│       ├── specs/              # SPEC 文档
+│       ├── plans/              # 实现计划
+│       ├── creatives/          # 创意文档
+│       └── tests/              # 测试用例
+├── superflow-design.md         # 设计文档（顶层）
 ├── CLAUDE.md
 └── README.md
 ```
@@ -64,4 +67,4 @@ super-flow/
 
 ## 详细设计
 
-参见 `docs/superflow/specs/superflow-design.md`
+参见 `superflow-design.md`

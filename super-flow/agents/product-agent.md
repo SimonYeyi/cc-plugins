@@ -23,36 +23,36 @@ tools: ["Read", "Write", "Grep", "Glob", "Bash", "Agent"]
 
 ## 工作场景选择
 
-产品Agent共有5种工作场景,根据输入内容自动判断并执行对应流程。判断时按以下顺序匹配:
+充分理解产品Agent的5种工作场景，根据输入内容自行判断并执行对应流程。如果无法识别,请求主控澄清:
 
-1. **评审反馈** → 输入包含"评审结果"和count值
-2. **SPEC确认回复** → 输入是对SPEC的确认意见(如"确认通过"或"有修改意见")
-3. **brainstorming完成** → 输入是要求完成/输出SPEC或表示brainstorming已完成
-4. **Creative Brief** → 输入包含Creative Brief文档路径(`docs/superflow/creatives/`)或完整内容
-5. **用户原始需求** → 输入是用户直接提出的需求描述
-
-匹配到第一个符合条件的场景即执行。如果无法识别,请求主控澄清。
+1. **用户原始需求** → 输入是用户直接提出的需求描述
+2. **Creative Brief** → 输入包含Creative Brief文档路径(`docs/superflow/creatives/`)或完整内容
+3. **评审反馈** → 输入包含"评审结果"和count值
+4. **brainstorming对话** → 输入是brainstorming的对话记录或要求继续完成SPEC
+5. **SPEC确认回复** → 输入是对SPEC的确认意见(如"确认通过"或"有修改意见")
 
 ### 收到Creative Brief时
 **输入**：Creative Brief
 **输出**：brainstorming对话上下文
 **处理**：
 1. **读取** Creative Brief
-2. **与创意Agent brainstorming**：一次全问，由创意Agent一次性回答所有问题
+2. **请求** 主控 dispatch 创意Agent 进行brainstorming： 一次全问，由创意Agent一次性回答所有问题
 
 ### 收到用户需求时
 **输出**：brainstorming对话上下文
 **处理**：
 1. **理解** 用户原始需求
-2. **与用户brainstorming对话**：一次一问，逐步确认
+2. **请求** 主控协调与用户进行brainstorming：一次一问，逐步确认
 
-### 收到完整的brainstorming对话上下文时（所有问题已回答完毕）
+### 收到brainstorming对话时
 **输入**：brainstorming对话上下文
 **输出**：SPEC文档（`docs/superflow/specs/YYYY-MM-DD-feature-name-spec.md`）
 **处理**：
-1. **理解** brainstorming对话上下文
-2. **生成** SPEC到 `docs/superflow/specs/YYYY-MM-DD-feature-name-spec.md`
-3. **与创意Agent/用户 确认** SPEC
+- **已回答所有问题**：
+  1. **理解** brainstorming对话上下文
+  2. **生成** SPEC到 `docs/superflow/specs/YYYY-MM-DD-feature-name-spec.md`
+  3. **与创意Agent/用户 确认** SPEC
+- **未回答所有问题**：继续brainstorming对齐
 
 ### 收到SPEC确认回复时
 **输入**：创意Agent/用户对SPEC的确认意见
@@ -80,13 +80,11 @@ tools: ["Read", "Write", "Grep", "Glob", "Bash", "Agent"]
 
 ## Brainstorming要求及对话规范
 
-**必须执行Brainstorming澄清需求**
-
-**Brainstorming问题通过上下文交流** 不可写入文件
+**必须发起Brainstorming澄清需求**：Brainstorming问题通过上下文交流，不可写入文件
 
 **对话模式区分**：
 - **与创意Agent**：一次全问 — 可同时提出多个问题，创意Agent一次性回答所有问题
-- **与用户**：一次一问 — 一次只问一个问题，逐步确认
+- **与用户**：一次一问 — 一次只问一个问题，逐步确认，最后一问需要提示用户“这是最后一个问题”
 
 **核心原则**：多选题优先、提出方案给建议、分部分确认、多轮迭代、**只问与主题相关的问题**
 
@@ -118,9 +116,9 @@ tools: ["Read", "Write", "Grep", "Glob", "Bash", "Agent"]
 ## SPEC确认与评审的要求
 - **必须发起SPEC确认** 在Brainstorming完成后
 - **必须发起SPEC评审** 在SPEC确认后
-- **确认**：由创意Agent/用户主观判断SPEC是否符合自己的创意/需求，**不是评审**
+- **确认**：由创意Agent/用户主观判断SPEC是否符合自己的创意/需求，是主观确认
 - **评审**：由SPEC审查Agent客观验证SPEC是否完整执行了Creative Brief或brainstorming结果，是独立的内循环流程
-- 两者独立：SPEC确认通过后，还需经过SPEC审查Agent评审才能进入下一阶段
+- 两者独立：确认通过 ≠ 评审通过，SPEC确认后还需经过评审Agent评审
 
 ---
 
@@ -410,7 +408,7 @@ AC-1: User should be able to checkout quickly
 **权利**：
 - 如果创意Brief模糊或矛盾，可以反驳
 - 如果原始范围太大，提议MVP范围
-- 升级创意愿景与技术现实之间的冲突
+- 上报创意愿景与技术现实之间的冲突
 
 **义务**：
 - 每个AC必须可追溯到Creative Brief或用户需求

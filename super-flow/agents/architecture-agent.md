@@ -40,7 +40,7 @@ tools: ["Read", "Write", "Grep", "Glob", "Bash", "Edit", "Agent"]
 | 通过 | 确认评审通过，上报架构流程结束 |
 | 有意见，count < 5 | 修复/反驳评审意见 → 重新 dispatch |
 | 有意见，count = 5 | 汇总分歧上报主控 |
-| count = -1（主控决断） | 执行决断 → 更新实现计划 → 重新 dispatch |
+| count = -1（主控决断） | 执行决断 → 更新实现计划 → 上报架构流程结束 |
 
 ---
 

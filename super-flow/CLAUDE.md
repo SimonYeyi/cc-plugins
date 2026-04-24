@@ -8,29 +8,44 @@
 
 ## 核心组件
 
-| 组件 | 路径 | 说明 |
-|------|------|------|
-| 主控 | `skills/super-flow/SKILL.md` | 按顺序启动主干 Agent、协调阶段交接、监控内循环、决断所有升级问题 |
-| 创意 Agent | `agents/creative-agent.md` | CEO/高级产品战略官，输出 Creative Brief，经评审后移交产品 Agent |
-| 创意评审团 | `agents/creative-reviewer.md` | 创新性+可行性+商业价值，每个实例评估全部视角 |
-| 产品 Agent | `agents/product-agent.md` | brainstorming 后输出 SPEC.md，负责与创意提出者/用户确认 SPEC |
-| SPEC 审查 Agent | `agents/spec-reviewer.md` | 验证 SPEC 是否完整执行 Creative Brief（创意模式）或 brainstorming（产品模式）的创意 |
-| 架构 Agent | `agents/architecture-agent.md` | 接收 SPEC，生成实现计划 |
-| 计划评审 Agent | `agents/plan-reviewer.md` | 验证计划完整性、架构合理性 |
-| 开发 Agent | `agents/developer-agent.md` | 按计划执行实现 |
-| 实现评审团 | `agents/implementation-reviewer.md` | 完整性+代码质量+安全 |
-| 测试 Agent | `agents/tester-agent.md` | 测试用例生成 + 单元测试 + 执行，产出测试报告 |
-| 测试评审 Agent | `agents/test-reviewer.md` | 验证测试用例覆盖率和质量精度 |
+| 组件 | 颜色 | 路径 | 说明 |
+|------|------|------|------|
+| 主控 | — | `skills/super-flow/SKILL.md` | 按顺序启动主干 Agent、协调阶段交接、监控内循环、决断所有上报问题 |
+| 创意 Agent | magenta | `agents/creative-agent.md` | CEO/高级产品战略官，输出 Creative Brief，经评审后移交产品 Agent |
+| 创意评审团 | magenta | `agents/creative-reviewer.md` | 创新性+可行性+商业价值，每个实例评估全部视角 |
+| 产品 Agent | orange | `agents/product-agent.md` | brainstorming 后输出 SPEC.md + user-guide.md，负责与创意提出者/用户确认 SPEC |
+| SPEC 审查 Agent | orange | `agents/spec-reviewer.md` | 验证 SPEC 是否完整执行 Creative Brief（创意模式）或 brainstorming（产品模式）的创意 |
+| 架构 Agent | cyan | `agents/architecture-agent.md` | 接收 SPEC，生成实现计划 |
+| 计划评审 Agent | cyan | `agents/plan-reviewer.md` | 验证计划完整性、架构合理性 |
+| 开发 Agent | green | `agents/developer-agent.md` | 按计划执行实现 |
+| 实现评审团 | green | `agents/implementation-reviewer.md` | 完整性+代码质量+安全 |
+| 测试 Agent | yellow | `agents/tester-agent.md` | 测试用例生成 + 单元测试 + 执行，产出测试报告 |
+| 测试评审 Agent | yellow | `agents/test-reviewer.md` | 验证测试用例覆盖率和质量精度 |
+
+> **颜色规范**：主干Agent与对应的评审Agent使用相同颜色，不同主干Agent使用不同颜色以区分
 
 ## 文件输出目录
 
+**feature-name命名规则**：
+- 创意模式：由创意Agent决定
+- 产品模式：由产品Agent决定
+- 所有文档使用**同一个** feature-name，便于关联
+
 ```
 docs/superflow/
-├── specs/    # SPEC 文档 (YYYY-MM-DD-feature-name-spec.md)
-├── plans/    # 实现计划 (YYYY-MM-DD-feature-name-plan.md)
-├── creatives/ # 创意文档 (YYYY-MM-DD-feature-name-creative.md)
-└── tests/    # 测试用例
+├── specs/              # SPEC 文档
+│   └── YYYY-MM-DD-feature-name-spec.md
+├── plans/              # 实现计划
+│   └── YYYY-MM-DD-feature-name-plan.md
+├── creatives/          # 创意文档
+│   └── YYYY-MM-DD-feature-name-creative.md
+├── tests/              # 测试用例
+│   ├── YYYY-MM-DD-feature-name-logic-tests.md    # 逻辑测试用例
+│   ├── YYYY-MM-DD-feature-name-manual-tests.md    # 非逻辑测试用例
+│   └── YYYY-MM-DD-feature-name-test-report.md     # 测试报告
 ```
+
+设计文档（设计规范、架构说明）放在 `docs/superflow/specs/` 子目录。
 
 ## Agent 设计原则
 
@@ -63,4 +78,4 @@ docs/superflow/
 
 ## 设计参考
 
-完整设计文档：`docs/superflow/specs/superflow-design.md`
+完整设计文档：`superflow-design.md`

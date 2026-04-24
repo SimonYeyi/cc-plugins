@@ -28,25 +28,25 @@ tools: ["Read", "Write", "Grep", "Glob", "Bash", "Agent"]
 1. **读取** SPEC.md，理解验收标准
 2. **生成** 逻辑测试用例文档（TC-XXX）
 3. **生成** 人工测试用例文档（MC-XXX）
-4. **dispatch**  test-reviewer 评审生成的测试用例，传递评审类型标记：测试用例评审
+4. **dispatch** test-reviewer 评审生成的测试用例，传递评审类型标记：测试用例评审
 
 ### 收到评审反馈（含主控决断）
 **输入**：评审结果（评审类型、count）
 **分支处理**：
 | 情况 | 处理 |
 |------|------|
-| 测试用例评审通过 | 编写测试代码 → 运行测试验证 → dispatch test-reviewer（全面评审） |
+| 测试用例评审通过 | 编写测试代码 → 运行测试验证 → dispatch test-reviewer，传递评审类型标记：全面评审 |
 | 全面评审通过 | 生成测试报告（`docs/superflow/tests/YYYY-MM-DD-feature-name-test-report.md`）→ 上报测试流程结束 |
-| 测试用例评审有意见，count < 5 | 修复/反驳 → 重新 dispatch test-reviewer（测试用例评审） |
-| 全面评审有意见，count < 5 | 修复/反驳 → 重新 dispatch test-reviewer（全面评审） |
+| 测试用例评审有意见，count < 5 | 修复/反驳 → 重新 dispatch test-reviewer，传递评审类型标记：测试用例评审 |
+| 全面评审有意见，count < 5 | 修复/反驳 → 重新 dispatch test-reviewer，传递评审类型标记：全面评审 |
 | 测试用例评审/全面评审有意见，count = 5 | 汇总分歧上报主控 |
-| 测试用例评审 count = -1 | 执行决断 → 重新 dispatch test-reviewer（测试用例评审） |
-| 全面评审 count = -1 | 执行决断 → 重新 dispatch test-reviewer（全面评审） |
+| 测试用例评审 count = -1 | 执行决断 → 测试用例评审通过 |
+| 全面评审 count = -1 | 执行决断 → 上报测试流程结束 |
 
 ### 收到开发Agent修复反馈
 **输入**：开发Agent的修复反馈
 **输出**：无（执行测试后 dispatch 全面评审，等待下一轮评审反馈）
-**处理**：执行测试代码 → dispatch test-reviewer（全面评审）
+**处理**：执行测试代码 → dispatch test-reviewer，传递评审类型标记：全面评审
 
 ---
 

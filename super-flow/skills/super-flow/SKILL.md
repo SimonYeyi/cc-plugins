@@ -5,7 +5,7 @@ description: "SuperFlow — full-stack autonomous development workflow. MUST use
 
 # 超级生产线（SuperFlow）
 
-全链路自主开发流程的入口 skill。协调多个 Agent 完成：创意生成 → 产品规划 → 架构设计 → UI/UX 设计 → 代码实现 → 测试验证，循环迭代直到所有问题解决。
+全链路自主开发流程的入口 skill。协调多个 Agent 完成：创意生成 → 产品规划 → 架构设计 → UX/UI 设计 → 代码实现 → 测试验证，循环迭代直到所有问题解决。
 
 ## 入口分支（请认真思考用户输入，准确判断模式）
 
@@ -178,6 +178,7 @@ description: "SuperFlow — full-stack autonomous development workflow. MUST use
             │
             ▼
         确认结果返回产品Agent（牢记）
+        ⚠️ **重要**：SPEC确认后，后续所有流程（架构→设计→开发→测试→评审）均为全自动，无需用户参与
     │
     ▼
 产品Agent请求主控dispatch SPEC审查Agent（orange）
@@ -236,7 +237,7 @@ description: "SuperFlow — full-stack autonomous development workflow. MUST use
 主控dispatch设计Agent（purple） ← count=0（阶段四：设计流程开始）
     │ 输入：SPEC.md + 实现计划文档
     ▼
-设计Agent基于需求和架构设计UI/UX方案
+设计Agent基于需求和架构设计UX/UI方案
     │
     ▼
 设计Agent请求主控dispatch设计评审Agent（purple）← count+1
@@ -257,13 +258,13 @@ description: "SuperFlow — full-stack autonomous development workflow. MUST use
 
 ```
 主控dispatch开发Agent（green） ← count=0（阶段五：开发流程开始）
-    │ 输入：SPEC.md + 实现计划文档 + UI/UX设计文档
+    │ 输入：SPEC.md + 实现计划文档 + UX/UI设计文档
     ▼
 开发Agent输出代码实现
     │
     ▼
 开发Agent请求主控dispatch实现评审团（green）← count+1
-    │ 输入：代码实现 + SPEC.md + 设计文档
+    │ 输入：代码实现 + SPEC.md + UX/UI设计文档
     ├──不通过 → 评审结果返回开发Agent修复（附带count，循环）
     │       │
     │       ├──循环5次内 → 继续循环
@@ -280,13 +281,13 @@ description: "SuperFlow — full-stack autonomous development workflow. MUST use
 
 ```
 主控dispatch测试Agent（yellow） ← count=0（阶段六：测试流程开始）
-    │ 输入：SPEC.md
+    │ 输入：SPEC.md + UX/UI设计文档
     ▼
 测试Agent生成测试用例文档（测试阶段一：只写测试用例文档，不写测试代码）
     │
     ▼
 测试Agent请求主控dispatch测试评审Agent（yellow）← count+1（测试阶段一评审：测试用例评审）
-    │ 输入：SPEC.md + 单元测试用例文档 + 平台测试用例文档 + 验收测试用例文档
+    │ 输入：SPEC.md + UX/UI设计文档 + 单元测试用例文档 + 平台测试用例文档 + 验收测试用例文档
     ├──不通过 → 评审结果返回测试Agent修复（附带count，循环）
     │       │
     │       ├──循环5次内 → 继续循环
@@ -411,7 +412,7 @@ description: "SuperFlow — full-stack autonomous development workflow. MUST use
     - SPEC.md
     - user-guide.md
     - 实现计划
-    - **UI/UX 设计文档**
+    - **UX/UI 设计文档**
     - 代码实现
     - 测试用例文档 + 单元测试代码
     - **测试报告**
@@ -501,7 +502,7 @@ docs/superflow/
 │   └── YYYY-MM-DD-feature-name-spec.md
 ├── plans/              # 实现计划
 │   └── YYYY-MM-DD-feature-name-plan.md
-├── designs/            # UI/UX 设计文档
+├── designs/            # UX/UI 设计文档
 │   └── YYYY-MM-DD-feature-name-design.md
 ├── creatives/         # 创意文档
 │   └── YYYY-MM-DD-feature-name-creative.md
@@ -511,46 +512,3 @@ docs/superflow/
 │   ├── YYYY-MM-DD-feature-name-acceptance-tests.md # 验收测试用例
 │   └── YYYY-MM-DD-feature-name-test-report.md     # 测试报告
 ```
-
-## 常见错误 — 禁止逾越的红线
-
-### 产品Agent与创意Agent/用户对话时常见错误
-
-| 错误行为                     | 后果                   | 正确做法                           |
-|--------------------------|----------------------|--------------------------------|
-| 主控自行处理brainstorming问题    | 违反“传话筒”原则，越权判断回复内容   | 直接dispatch给创意Agent/用户，不判断内容合理性 |
-| 自行判断用户/创意Agent的回复是否合理/通过 | 违反“主控只充当传话筒”原则       | 立即 dispatch 给对应 Agent，不判断内容    |
-| SPEC确认后未dispatch产品Agent  | 流程中断，产品Agent无法处理确认结果 | 创意Agent/用户确认后 dispatch回产品Agent |
-
-### dispatch 常见错误
-
-| 错误行为                                  | 后果 | 正确做法                        |
-|---------------------------------------|------|-----------------------------|
-| dispatch 时不展示上下文给用户                   | 用户不了解 Agent 间交流内容 | 必须展示传入 subagent 的完整上下文      |
-| dispatch 主干Agent时不带 count 值 | 无法追踪评审循环进度 | 必须附带当前 count 值 |
-
-### 决断常见错误
-
-| 错误行为                         | 后果 | 正确做法 |
-|------------------------------|------|----------|
-| 主干Agent 上报后主控不决断             | 流程卡住 | 主控必须做出决断并 dispatch 执行 |
-| 决断后不 dispatch 执行             | 决断无效 | 决断 = 做出决定 + 指明下一步 + dispatch 执行 |
-| 把 dispatch 处理误当决断上报          | 循环无法结束 | 评审意见是 dispatch 处理，不是决断上报 |
-| 主干Agent 未明确说"无法决定/请求决断"就自行决断 | 越权干预 | 决断的唯一判断标准是主干Agent明确请求 |
-| 主控根据count值大小决定是否要决断 | 错误归因，count是追踪工具不是决断依据 | 决断依据是主干Agent明确请求，与count无关 |
-
-### 评审循环常见错误
-
-| 错误行为                 | 后果                        | 正确做法                        |
-|----------------------|---------------------------|-----------------------------|
-| 收到评审通过后直接进入下一阶段      | 违反"主干Agent流程结束才进入下一阶段"的规则 | 必须 dispatch 主干Agent处理评审通过反馈 |
-| 跳过评审循环直接推进流程         | 评审内循环未执行到位                | 无论何时必须等待主干Agent反馈"流程结束"     |
-| count = 0 时显示"第0轮评审" | 信息误导用户                    | count > 0 时才显示评审轮次          |
-| 显示 count = N 给用户     | 信息干扰用户                    | 不显示count的真实数值，只在count > 0 时显示评审轮次            |
-
-### 其他常见错误
-
-| 错误行为            | 后果 | 正确做法                  |
-|-----------------|------|-----------------------|
-| 创意模式下把问题抛给用户    | 违反"全自动生产线"原则 | 主控根据规则推进流程            |
-| 产品模式下评审意见请求用户处理 | 违反"半自动生产线"原则(仅brainstorming和SPEC确认允许用户参与) | dispatch主干Agent处理评审意见 |

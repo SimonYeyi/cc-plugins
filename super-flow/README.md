@@ -26,7 +26,7 @@ SuperFlow 是一个基于 Claude Code 的开发框架,将软件开发拆解为 6
 1. **创意流程**(仅创意模式):创意Agent 发散构思 → 创意评审团评审(创新性+可行性+商业价值)
 2. **产品流程**:产品Agent 与创意方 brainstorming → 生成 SPEC.md → SPEC 评审
 3. **架构流程**:架构Agent 评估可实现性 → 输出实现计划 → 计划评审
-4. **设计流程**:设计Agent 基于 SPEC 和架构计划设计 UI/UX → 设计评审(可用性+一致性+可访问性)
+4. **设计流程**:设计Agent 基于 SPEC 和架构计划设计 UX/UI → 设计评审(可用性+一致性+可访问性)
 5. **开发流程**:开发Agent 基于 SPEC、计划和设计文档编码 → 实现评审团审查(完整性+代码质量+设计规范)
 6. **测试流程**:测试Agent 编写测试用例 → 编写测试代码 → 执行测试 → 测试评审 → 生成测试报告
 
@@ -75,7 +75,7 @@ docs/superflow/
 │   └── YYYY-MM-DD-feature-name-spec.md
 ├── plans/                  # 实现计划
 │   └── YYYY-MM-DD-feature-name-plan.md
-├── designs/                # UI/UX 设计文档
+├── designs/                # UX/UI 设计文档
 │   └── YYYY-MM-DD-feature-name-design.md
 ├── tests/                  # 测试相关
 │   ├── YYYY-MM-DD-feature-name-unit-tests.md       # 单元测试用例

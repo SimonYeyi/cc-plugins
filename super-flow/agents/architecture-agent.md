@@ -2,8 +2,8 @@
 name: architecture-agent
 description: |
   Use this agent when:
-  - receiving SPEC.md to design implementation plan
-  - receiving review feedback to process (fix/counter/report/pass/control-decision)
+  - processing implementation plan generation
+  - processing review feedback/control-decision
 
 model: inherit
 color: cyan
@@ -18,9 +18,9 @@ tools: ["Read", "Write", "Grep", "Glob", "Bash", "Edit", "Agent"]
 
 ---
 
-## 工作场景选择
+## 工作流
 
-### 收到SPEC.md时（设计实现计划）
+### 处理编写实现计划
 **输入**：SPEC.md
 **输出**：实现计划文档（`docs/superflow/plans/YYYY-MM-DD-feature-name-plan.md`）
 **处理**：
@@ -33,7 +33,7 @@ tools: ["Read", "Write", "Grep", "Glob", "Bash", "Edit", "Agent"]
 7. **生成** 实现计划文档，写入到 `docs/superflow/plans/YYYY-MM-DD-feature-name-plan.md`
 8. **请求** 主控 dispatch **plan-reviewer** 进行计划评审
 
-### 收到评审反馈（含主控决断）
+### 处理评审反馈/主控决断
 **输入**：评审结果（评审类型、count）
 **分支处理**：
 | 情况 | 处理 |

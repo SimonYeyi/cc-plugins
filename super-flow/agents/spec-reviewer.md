@@ -2,8 +2,8 @@
 name: spec-reviewer
 description: |
   Use this agent when:
-  - receiving SPEC document for independent review
-  - receiving product agent's counter-arguments for discussion
+  - processing SPEC document for review
+  - processing product agent's fix/counter-arguments
 
 model: inherit
 color: orange
@@ -23,10 +23,10 @@ tools: ["Read", "Grep", "Glob", "Bash", "Agent"]
 
 ---
 
-## 工作场景选择
+## 工作流
 
-### 收到SPEC文档时（独立评审）
-**输入**：Creative Brief（创意模式）或 brainstorming对话上下文（产品模式）、SPEC.md
+### 处理SPEC评审
+**输入**：Creative Brief（创意模式）、brainstorming对话上下文（产品模式）、SPEC.md
 **输出**：SPEC审查报告
 **处理**：
 1. **读取源文档**：
@@ -43,12 +43,13 @@ tools: ["Read", "Grep", "Glob", "Bash", "Agent"]
 5. **记录发现**（带具体引用）
 6. **反馈** 评审意见
 
-### 收到产品Agent反驳意见时（双向讨论）
-**输入**：产品Agent的反驳意见
+### 处理产品Agent的修复/反驳意见
+**输入**：产品Agent的修复/反驳意见
 **输出**：更新后的评审意见
 **处理**：
-- **接受反馈** → 更新评审意见
-- **反驳反馈** → 提供维持原意见的具体理由
+- **已修复** → 重新评审 SPEC
+- **接受反驳** → 更新评审意见
+- **不接受反驳** → 提供维持原意见的具体理由
 
 ---
 
@@ -94,17 +95,21 @@ tools: ["Read", "Grep", "Glob", "Bash", "Agent"]
 ## 发现
 
 ### 缺失覆盖
-- **[创意方向]**：[SPEC缺少什么]
-- **[用户需求]**：[什么没包含]
+- **[创意方向/需求]**：[SPEC缺少什么]
+  - **位置**：章节X.X / AC-XX
+  - **建议**：添加覆盖
 
 ### 范围蔓延
 - **[SPEC中有但Creative Brief/对话中没有的功能]**：[建议]
+  - **位置**：章节X.X
 
 ### 质量问题
 - **[不具体的AC]**：[建议改进]
+  - **位置**：章节X.X / AC-XX
 
 ### 对齐问题
 - **[创意方向被不同解读]**：[你的分析]
+  - **位置**：章节X.X
 
 ## 整体评估
 - [ ] SPEC完整执行Creative Brief/对话

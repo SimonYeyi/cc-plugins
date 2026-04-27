@@ -146,13 +146,16 @@ description: "SuperFlow — full-stack autonomous development workflow. MUST use
               │       │
               │       └──5次后仍不通过 → 主控决断（count=-1）→ dispatch产品Agent执行决断（附带count=-1）
               │
-              └──通过 → 评审结果返回产品Agent → 产品Agent生成user-guide.md → 上报"流程结束" → 进入阶段三：架构流程
+              └──通过 → 评审结果返回产品Agent → 产品Agent生成user-guide.md → 上报"流程结束"
+                      │
+                      ▼
+                  进入阶段三：架构流程
 ```
 
 #### 产品模式流程
 
 ```
-用户输入需求
+用户输入需求（阶段一：用户输入）
     │
     ▼
 主控dispatch产品Agent（orange）← count=0（阶段二：产品流程开始）
@@ -164,7 +167,7 @@ description: "SuperFlow — full-stack autonomous development workflow. MUST use
 产品Agent生成SPEC.md
     │
     ▼
-主控展示SPEC给用户确认
+主控展示SPEC给用户确认（确认 ≠ 评审）
     │
     ├──用户有修改意见 → 主控传话给产品Agent修改SPEC（循环）
     │       │
@@ -174,7 +177,7 @@ description: "SuperFlow — full-stack autonomous development workflow. MUST use
     └──用户确认通过（主控传话）
             │
             ▼
-        确认结果返回产品Agent
+        确认结果返回产品Agent（牢记）
     │
     ▼
 产品Agent请求主控dispatch SPEC审查Agent（orange）
@@ -185,7 +188,10 @@ description: "SuperFlow — full-stack autonomous development workflow. MUST use
     │       │
     │       └──5次后仍不通过 → 主控决断（count=-1）→ dispatch产品Agent执行决断（附带count=-1）
     │
-    └──通过 → 评审结果返回产品Agent → 产品Agent生成user-guide.md → 上报"流程结束" → 进入阶段三：架构流程
+    └──通过 → 评审结果返回产品Agent → 产品Agent生成user-guide.md → 上报"流程结束"
+            │
+            ▼
+        进入阶段三：架构流程
 ```
 
 #### 阶段三：架构流程
@@ -218,16 +224,16 @@ description: "SuperFlow — full-stack autonomous development workflow. MUST use
         │       │
         │       └──5次后仍不通过 → 主控决断（count=-1）→ dispatch架构Agent执行决断（附带count=-1）
         │
-        └──通过 → 评审结果返回架构Agent → 架构Agent上报"流程结束" → 进入阶段四：设计流程
+        └──通过 → 评审结果返回架构Agent
+                │
+                ▼
+            进入阶段四：设计流程
 ```
 
 #### 阶段四：设计流程
 
 ```
 主控dispatch设计Agent（purple） ← count=0（阶段四：设计流程开始）
-    │
-    ▼
-设计Agent读取SPEC.md和架构计划
     │
     ▼
 设计Agent基于需求和架构设计UI/UX方案
@@ -241,16 +247,16 @@ description: "SuperFlow — full-stack autonomous development workflow. MUST use
     │       │
     │       └──5次后仍不通过 → 主控决断（count=-1）→ dispatch设计Agent执行决断（附带count=-1）
     │
-    └──通过 → 评审结果返回设计Agent → 设计Agent上报"流程结束" → 进入阶段五：开发流程
+    └──通过 → 评审结果返回设计Agent
+            │
+            ▼
+        进入阶段五：开发流程
 ```
 
 #### 阶段五：开发流程
 
 ```
 主控dispatch开发Agent（green） ← count=0（阶段五：开发流程开始）
-    │
-    ▼
-开发Agent读取SPEC.md、实现计划和设计文档
     │
     ▼
 开发Agent输出代码实现
@@ -264,7 +270,10 @@ description: "SuperFlow — full-stack autonomous development workflow. MUST use
     │       │
     │       └──5次后仍不通过 → 主控决断（count=-1）→ dispatch开发Agent执行决断（附带count=-1）
     │
-    └──通过 → 评审结果返回开发Agent → 开发Agent上报"流程结束" → 进入阶段六：测试流程
+    └──通过 → 评审结果返回开发Agent
+            │
+            ▼
+        进入阶段六：测试流程
 ```
 
 #### 阶段六：测试流程
@@ -287,7 +296,7 @@ description: "SuperFlow — full-stack autonomous development workflow. MUST use
     └──通过 → 评审结果返回测试Agent
             │
             ▼
-测试Agent编写单元测试代码和平台测试代码（测试阶段二：测试代码编写）
+测试Agent编写测试代码（测试阶段二：测试代码编写）
     │
     ▼
 执行测试
@@ -541,6 +550,7 @@ docs/superflow/
 
 ### 其他常见错误
 
-| 错误行为                     | 后果 | 正确做法                    |
-|--------------------------|------|-------------------------|
-| 创意模式下把问题抛给用户           | 违反"全自动生产线"原则 | 根据规则推进流程                |
+| 错误行为            | 后果 | 正确做法                  |
+|-----------------|------|-----------------------|
+| 创意模式下把问题抛给用户    | 违反"全自动生产线"原则 | 主控根据规则推进流程            |
+| 产品模式下评审意见请求用户处理 | 违反"半自动生产线"原则(仅brainstorming和SPEC确认允许用户参与) | dispatch主干Agent处理评审意见 |

@@ -2,9 +2,9 @@
 name: developer-agent
 description: |
   Use this agent when:
-  - receiving SPEC.md, implementation plan and design document to execute
-  - receiving review feedback to process (fix/counter/report/pass/control-decision)
-  - receiving test failure feedback to fix bugs
+  - processing implementation code generation
+  - processing review feedback/control-decision
+  - processing test failure feedback
 
 model: inherit
 color: green
@@ -19,14 +19,10 @@ tools: ["Read", "Write", "Grep", "Glob", "Bash", "Edit", "TodoWrite", "Agent"]
 
 ---
 
-## 工作场景选择
+## 工作流
 
-### 收到实现计划时（执行实现）
-**输入**：
-- SPEC.md（产品需求文档）
-- 实现计划文档
-- UI/UX 设计文档（`docs/superflow/designs/YYYY-MM-DD-feature-name-design.md`）
-
+### 处理编写实现代码（执行实现计划）
+**输入**：SPEC.md、实现计划文档、UI/UX设计文档
 **输出**：代码实现
 
 **处理**：
@@ -39,7 +35,7 @@ tools: ["Read", "Write", "Grep", "Glob", "Bash", "Edit", "TodoWrite", "Agent"]
 7. **确保** 代码可运行、无编译错误、无回归、符合设计规范
 8. **请求** 主控 dispatch **implementation-reviewer**（1个实例）进行评审
 
-### 收到评审反馈（含主控决断）
+### 处理评审反馈/主控决断
 **输入**：评审结果（评审类型、count）
 **分支处理**：
 | 情况 | 处理 |
@@ -49,7 +45,7 @@ tools: ["Read", "Write", "Grep", "Glob", "Bash", "Edit", "TodoWrite", "Agent"]
 | 有意见，count = 5 | 汇总分歧上报主控 |
 | count = -1（主控决断） | 执行决断 → 更新代码 → 上报开发流程结束 |
 
-### 收到测试失败反馈时（修复功能bug）
+### 处理测试失败反馈（修复功能bug）
 **输入**：测试失败报告
 **输出**：修复后的代码
 **处理**：

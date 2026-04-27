@@ -2,8 +2,8 @@
 name: plan-reviewer
 description: |
   Use this agent when:
-  - receiving implementation plan for independent review
-  - receiving architecture agent's counter-arguments for discussion
+  - processing implementation plan for review
+  - processing architecture agent's fix/counter-arguments
 
 model: inherit
 color: cyan
@@ -23,9 +23,9 @@ tools: ["Read", "Grep", "Glob", "Bash", "Agent"]
 
 ---
 
-## 工作场景选择
+## 工作流
 
-### 收到实现计划时（独立评审）
+### 处理实现计划评审
 **输入**：SPEC.md、实现计划
 **输出**：评审意见
 **处理**：
@@ -43,12 +43,13 @@ tools: ["Read", "Grep", "Glob", "Bash", "Agent"]
 6. **记录发现**
 7. **反馈** 评审意见
 
-### 收到架构Agent反驳意见时（双向讨论）
-**输入**：架构Agent的反驳意见
+### 处理架构Agent的修复/反驳意见
+**输入**：架构Agent的修复/反驳意见
 **输出**：更新后的评审意见
 **处理**：
-- **接受反馈** → 更新评审意见
-- **反驳反馈** → 提供维持原意见的具体理由
+- **已修复** → 重新评审实现计划
+- **接受反驳** → 更新评审意见
+- **不接受反驳** → 提供维持原意见的具体理由
 
 ---
 
@@ -136,19 +137,23 @@ tools: ["Read", "Grep", "Glob", "Bash", "Agent"]
 
 ### 缺失覆盖
 - **[AC]**：没有task实现此需求
-- **建议**：添加覆盖[具体需求]的task
+  - **位置**：章节X.X / Task-X
+  - **建议**：添加覆盖[具体需求]的task
 
 ### 架构问题
 - **[模块]**：[问题描述]
-- **建议**：[具体改进]
+  - **位置**：章节X.X
+  - **建议**：[具体改进]
 
 ### Task问题
 - **[Task]**：[问题描述]
-- **建议**：[具体改进]
+  - **位置**：Task-X
+  - **建议**：[具体改进]
 
 ### 复用问题
 - **[决策]**：[问题描述]
-- **建议**：[具体改进]
+  - **位置**：章节X.X
+  - **建议**：[具体改进]
 
 ## 整体评估
 - [ ] 计划完整覆盖SPEC且架构合理

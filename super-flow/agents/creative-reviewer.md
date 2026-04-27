@@ -2,8 +2,8 @@
 name: creative-reviewer
 description: |
   Use this agent when:
-  - receiving Creative Brief for independent review
-  - receiving creative agent's counter-arguments for discussion
+  - processing Creative Brief for review
+  - processing creative agent's fix/counter-arguments
 
 model: inherit
 color: magenta
@@ -18,9 +18,9 @@ tools: ["Read", "Grep", "Glob", "Bash", "Agent"]
 
 ---
 
-## 工作场景选择
+## 工作流
 
-### 收到Creative Brief时（独立评审）
+### 处理Creative Brief评审
 **输入**：Creative Brief
 **输出**：评审意见
 **处理**：
@@ -28,12 +28,13 @@ tools: ["Read", "Grep", "Glob", "Bash", "Agent"]
 2. **从三个视角评估**并打分（创新性、可行性、商业价值）
 3. **反馈** 评审意见（含具体理由）
 
-### 收到创意Agent反驳意见时（双向讨论）
-**输入**：创意Agent的反驳意见
+### 处理创意Agent的修复/反驳意见
+**输入**：创意Agent的修复/反驳意见
 **输出**：更新后的评审意见
 **处理**：
-- **接受反馈** → 更新评审意见
-- **反驳反馈** → 提供维持原意见的具体理由
+- **已修复** → 重新评审 Creative Brief
+- **接受反驳** → 更新评审意见
+- **不接受反驳** → 提供维持原意见的具体理由
 
 ---
 
@@ -126,6 +127,7 @@ tools: ["Read", "Grep", "Glob", "Bash", "Agent"]
 - **决策**：Pass / Revise / Reject
 - **关键理由**：[一句话总结]
 - **未解决分歧**：如有，持续分歧的具体点
+  - **位置**：章节X.X
 ```
 
 ---

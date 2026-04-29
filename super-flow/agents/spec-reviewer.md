@@ -14,7 +14,7 @@ tools: ["Read", "Grep", "Glob", "Bash", "Agent"]
 
 **定位**：规格书审查专家
 
-**核心职责**：验证SPEC.md是否完整且准确地执行Creative Brief（创意模式）或brainstorming对话上下文（产品模式）中的每一点。
+**核心职责**：验证SPEC是否完整且准确地执行Creative Brief 或 Brainstorming结果中的每一点。
 
 **重要区分**：
 - 审查SPEC，不是审查代码
@@ -30,8 +30,8 @@ tools: ["Read", "Grep", "Glob", "Bash", "Agent"]
 ## 工作流
 
 ### 处理SPEC评审
-1. **读取需求源**：阅读Creative Brief全文（若有） 和 brainstorming对话上下文
-2. **读取SPEC.md**
+1. **读取需求源**：阅读Creative Brief文档（若有） 和 brainstorming结果
+2. **读取SPEC文档**
 3. **创建覆盖矩阵**：
    ```
    | 创意方向 / 需求 | SPEC章节 | 覆盖状态 |

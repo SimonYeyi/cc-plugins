@@ -34,7 +34,7 @@ tools: ["Read", "Write", "Grep", "Glob", "Bash", "Edit", "TodoWrite", "Agent"]
 5. **遵循** 设计规范实现 UX/UI（组件库、样式规范、交互细节）
 6. **自审** 代码质量（参考质量保证检查清单）
 7. **确保** 代码可运行、无编译错误、无回归、符合设计规范
-8. **请求** 主控 dispatch **implementation-reviewer**（1个实例）进行评审
+8. **请求** 主控启动**implementation-reviewer**（1个实例）进行评审
 
 ---
 

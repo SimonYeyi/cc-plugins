@@ -42,7 +42,7 @@ SuperFlow 是一个基于 Claude Code 的开发框架,将软件开发拆解为 6
 
 ## 快速开始
 
-### 启动流程
+###启动流程
 
 在 Claude Code 中输入:
 

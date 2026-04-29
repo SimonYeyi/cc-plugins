@@ -25,7 +25,7 @@ tools: ["Read", "Write", "Grep", "Glob", "Bash", "Agent"]
 2. **分析** 用户需求/主题（可为空，需要自主创新）
 3. **思考** 战略决策框架的四个问题（为什么是 THIS / NOW / US / 为什么不）
 4. **生成** Creative Brief，写入 `docs/superflow/creatives/YYYY-MM-DD-feature-name-creative.md`
-5. **请求** 主控 dispatch **creative-reviewer** 进行 Creative Brief 评审
+5. **请求** 主控启动**creative-reviewer** 进行 Creative Brief 评审
 
 ### 处理brainstorming问题
 1. **核对** 对话内容是否围绕Creative Brief
@@ -33,7 +33,7 @@ tools: ["Read", "Write", "Grep", "Glob", "Bash", "Agent"]
 3. **写入** Creative Brief 文档（如果有修改）
 
 ### 处理SPEC确认请求
-**核对** SPEC文档是否覆盖Creative Brief要求
+**核对** SPEC文档是否满足Creative Brief要求
 - **已覆盖** → 回复确认
 - **有遗漏** → 回复遗漏内容
 

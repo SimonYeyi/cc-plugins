@@ -18,7 +18,6 @@ description: "SuperFlow — full-stack autonomous development workflow. MUST use
 **主控决断的最高原则**：
 - **创意模式**：全自动生产线，**无论何时**都不能把问题抛给用户，必须自行决断确保流程继续
 - **产品模式**：半自动生产线，仅「产品 Agent 与用户 Brainstorming」和「请求用户确认 SPEC」允许用户参与，其余情况必须自行决断确保流程继续
-- **流程统一**：产品流程（SPEC确认）后，后续流程（架构 → 设计 → 开发 → 测试 → 评审）均为全自动，无需用户介入
 
 **主控询问固定格式**：
 当需要询问用户选择模式时，主控应使用以下格式：
@@ -33,8 +32,6 @@ description: "SuperFlow — full-stack autonomous development workflow. MUST use
 ```
 
 ## 完整流程
-
-> **重要：主控作为流程协调者必须遵守的原则**：优先保证流程完整，不能为了加快进度而忽略规则、跳过流程或步骤，必须确保每个阶段、每个流程、每个步骤都执行到位
 
 ```
 入口分支
@@ -77,17 +74,9 @@ description: "SuperFlow — full-stack autonomous development workflow. MUST use
 
 **主干Agent的定义**：流程图中每个阶段对应的任务实现Agent，如：创意Agent、产品Agent...
 
-**进入下一阶段流程的唯一判断标准**：收到主干Agent的”流程结束”反馈，而不是评审Agent的评审通过，更不是”xx已确认/通过”
+**主控作为流程协调者必须遵守的原则**：优先保证流程完整，不能为了加快进度而忽略规则、跳过流程或步骤，必须确保每个阶段、每个流程、每个步骤都执行到位
 
-**主控职责边界**（非常重要）：
-- ✓ 转发信息：把A Agent的消息转发给B Agent
-- ✓ 展示信息：让用户看到Agent间的交流内容
-- ✓ 追踪count：记录评审循环次数
-- ✓ 决断上报：当主干Agent明确说”无法决定/请求决断”时做出决断
-- ✓ 收到主干Agent反馈”流程结束”进入下一阶段
-- ✗ 不判断内容：不对brainstorming回复、SPEC确认结果做合理性判断
-- ✗ 不干预流程：不决定何时评审、何时进入下一阶段
-- ✗ 不主动dispatch评审Agent：评审Agent必须由主干Agent明确请求后才能dispatch
+**进入下一阶段流程的唯一判断标准**：收到主干Agent的”流程结束”反馈，而不是评审Agent的评审通过，更不是”xx已确认/通过”
 
 ---
 
@@ -99,91 +88,90 @@ description: "SuperFlow — full-stack autonomous development workflow. MUST use
 用户输入主题
     │
     ▼
-主控dispatch创意Agent(生成Creative Brief) ← count=0（阶段一：创意流程开始）
+主控启动创意Agent(任务：生成Creative Brief) ← count=0（阶段一：创意流程开始）
     │
     ▼
-创意Agent请求主控dispatch创意评审团(Creative Brief评审) ← count+1
+创意Agent请求主控启动创意评审Agent(任务：Creative Brief评审；传入：用户需求/主题) ← count+1
     │
-    ├──不通过 → 评审结果返回创意Agent修复（附带count，循环）
+    ├──不通过 → 评审结果返回创意Agent修复（循环）
     │       │
     │       ├──循环5次内 → 继续循环
     │       │
-    │       └──5次后仍不通过 → 主控决断（count=-1）→ dispatch创意Agent执行决断（附带count=-1）
+    │       └──5次后仍不通过 → 主控决断（count=-1） → 启动创意Agent执行决断
     │
     └──通过 → 评审结果返回创意Agent → 创意Agent上报"流程结束"
                   │
                   ▼
-    主控dispatch产品Agent(基于Creative Brief生成SPEC) ← count=0（阶段二：产品流程开始）
+          主控启动创意Agent进行一次全问brainstorming ← @references/brainstorming.md
               │
               ▼
-          产品Agent请求主控dispatch创意Agent确认SPEC
+          主控启动产品Agent(任务：基于Creative Brief生成SPEC；传入：brainstorming结果) ← count=0（阶段二：产品流程开始）
               │
-              ├──创意Agent有修改意见 → 主控传话给产品Agent修改SPEC（循环）
+              ▼
+          产品Agent请求主控启动创意Agent确认SPEC
+              │
+              ├──创意Agent有修改意见 → 主控启动产品Agent修改SPEC（循环）
               │       │
               │       ▼
-              │   产品Agent修改后重新请求dispatch创意Agent确认
+              │   产品Agent修改后重新请求启动创意Agent确认
               │
-              └──创意Agent确认通过（主控传话）
+              └──创意Agent确认通过（主控传话） → 确认结果返回产品Agent
                       │
                       ▼
-                  确认结果返回产品Agent
-              │
-              ▼
-          产品Agent请求主控dispatch SPEC评审Agent（SPEC评审）
-              │ 输入：brainstorming对话上下文
-              ├──不通过 → 评审结果返回产品Agent修复（附带count，循环）
-              │       │
-              │       ├──循环5次内 → 继续循环
-              │       │
-              │       └──5次后仍不通过 → 主控决断（count=-1）→ dispatch产品Agent执行决断（附带count=-1）
-              │
-              └──通过 → 评审结果返回产品Agent（生成用户指南） → 上报"流程结束"
+                  产品Agent请求主控启动SPEC评审Agent（任务：SPEC评审；传入：用户需求+Brainstorming结果）
                       │
-                      ▼
-                  进入阶段三：架构流程
+                      ├──不通过 → 评审结果返回产品Agent修复（循环）
+                      │       │
+                      │       ├──循环5次内 → 继续循环
+                      │       │
+                      │       └──5次后仍不通过 → 主控决断（count=-1） → 启动产品Agent执行决断
+                      │
+                      └──通过 → 启动产品Agent（任务：生成用户指南） → 产品Agent上报"流程结束"
+                                    │
+                                    ▼
+                                进入阶段三：架构流程
 ```
 
 #### 产品模式流程
 
 ```
-用户输入需求（阶段一：用户输入）
+用户输入需求
     │
     ▼
-主控dispatch产品Agent（基于用户需求生成SPEC） ← count=0（阶段二：产品流程开始）
+主控与用户进行一次一问brainstorming（阶段一：Brainstorming） ← @references/brainstorming.md
     │
     ▼
+主控启动产品Agent（任务：基于用户需求生成SPEC；传入：brainstorming结果） ← count=0（阶段二：产品流程开始）
+    │
+    ▼    
 产品Agent请求主控展示SPEC给用户确认（确认 ≠ 评审）
     │
-    ├──用户有修改意见 → 主控传话给产品Agent修改SPEC（循环）
+    ├──用户有修改意见 → 主控启动产品Agent修改SPEC（循环）
     │       │
     │       ▼
     │   产品Agent修改后重新请求主控展示SPEC给用户确认
     │
-    └──用户确认通过（主控传话）
-            │
+    └──用户确认通过（主控传话） → 确认结果返回产品Agent
+            │ ⚠️ **重要**：SPEC确认后，后续所有流程（架构→设计→开发→测试→评审）均为全自动，无需用户参与
             ▼
-        确认结果返回产品Agent（牢记）
-        ⚠️ **重要**：SPEC确认后，后续所有流程（架构→设计→开发→测试→评审）均为全自动，无需用户参与
+产品Agent请求主控启动SPEC评审Agent（任务：SPEC评审；传入：用户需求+Brainstorming结果）
     │
-    ▼
-产品Agent请求主控dispatch SPEC评审Agent（SPEC评审）
-    │ 输入：brainstorming对话上下文
-    ├──不通过 → 评审结果返回产品Agent修复（附带count，循环）
+    ├──不通过 → 评审结果返回产品Agent修复（循环）
     │       │
     │       ├──循环5次内 → 继续循环
     │       │
-    │       └──5次后仍不通过 → 主控决断（count=-1）→ dispatch产品Agent执行决断（附带count=-1）
+    │       └──5次后仍不通过 → 主控决断（count=-1）→ 启动产品Agent执行决断
     │
-    └──通过 → 评审结果返回产品Agent（生成用户指南） → 上报"流程结束"
-            │
-            ▼
-        进入阶段三：架构流程
+    └──通过 → 启动产品Agent（任务：生成用户指南） → 产品Agent上报"流程结束"
+                  │
+                  ▼
+              进入阶段三：架构流程
 ```
 
 #### 阶段三：架构流程
 
 ```
-主控dispatch架构Agent（编写实现计划） ← count=0（阶段三：架构流程开始）
+主控启动架构Agent（任务：编写实现计划） ← count=0（阶段三：架构流程开始）
     │
     ▼
 架构Agent评估SPEC可实现性
@@ -191,132 +179,126 @@ description: "SuperFlow — full-stack autonomous development workflow. MUST use
     ├──发现问题（技术不可行/需求矛盾/依赖缺失）
     │       │
     │       ▼
-    │   主控dispatch产品Agent修复SPEC
+    │   主控启动产品Agent修复SPEC
     │       │
     │       ▼
-    │   产品Agent修复后重新传入SPEC
-    │       │
-    │       ▼
-    │   架构Agent继续评估（循环）
+    │   启动架构Agent继续评估（循环）
     │
     └──可实现 → 输出实现计划
                 │
                 ▼
-    架构Agent请求主控dispatch计划评审Agent（实现计划评审） ← count+1
+    架构Agent请求主控启动计划评审Agent（任务：实现计划评审） ← count+1
         │
-        ├──不通过 → 评审结果返回架构Agent修复（附带count，循环）
+        ├──不通过 → 评审结果返回架构Agent修复（循环）
         │       │
         │       ├──循环5次内 → 继续循环
         │       │
-        │       └──5次后仍不通过 → 主控决断（count=-1）→ dispatch架构Agent执行决断（附带count=-1）
+        │       └──5次后仍不通过 → 主控决断（count=-1） → 启动架构Agent执行决断
         │
-        └──通过 → 评审结果返回架构Agent
-                │
-                ▼
-            进入阶段四：设计流程
+        └──通过 → 评审结果返回架构Agent → 架构Agent上报"流程结束"
+                      │
+                      ▼
+                  进入阶段四：设计流程
 ```
 
 #### 阶段四：设计流程
 
 ```
-主控dispatch设计Agent（设计UX/UI方案） ← count=0（阶段四：设计流程开始）
+主控启动设计Agent（任务：设计UX/UI方案） ← count=0（阶段四：设计流程开始）
     │
     ▼
-设计Agent请求主控dispatch设计评审Agent（UX/UI设计方案评审）← count+1
+设计Agent请求主控启动设计评审Agent（任务：UX/UI设计方案评审）← count+1
     │
-    ├──不通过 → 评审结果返回设计Agent修复（附带count，循环）
+    ├──不通过 → 评审结果返回设计Agent修复（循环）
     │       │
     │       ├──循环5次内 → 继续循环
     │       │
-    │       └──5次后仍不通过 → 主控决断（count=-1）→ dispatch设计Agent执行决断（附带count=-1）
+    │       └──5次后仍不通过 → 主控决断（count=-1） → 启动设计Agent执行决断
     │
-    └──通过 → 评审结果返回设计Agent
-            │
-            ▼
-        进入阶段五：开发流程
+    └──通过 → 评审结果返回设计Agent → 设计Agent上报"流程结束"
+                  │
+                  ▼
+              进入阶段五：开发流程
 ```
 
 #### 阶段五：开发流程
 
 ```
-主控dispatch开发Agent（编写实现代码） ← count=0（阶段五：开发流程开始）
+主控启动开发Agent（任务：编写实现代码） ← count=0（阶段五：开发流程开始）
     │
     ▼
-开发Agent请求主控dispatch实现评审团（代码实现评审）← count+1
+开发Agent请求主控启动实现评审Agent（任务：代码实现评审）← count+1
     │
-    ├──不通过 → 评审结果返回开发Agent修复（附带count，循环）
+    ├──不通过 → 评审结果返回开发Agent修复（循环）
     │       │
     │       ├──循环5次内 → 继续循环
     │       │
-    │       └──5次后仍不通过 → 主控决断（count=-1）→ dispatch开发Agent执行决断（附带count=-1）
+    │       └──5次后仍不通过 → 主控决断（count=-1） → 启动开发Agent执行决断
     │
-    └──通过 → 评审结果返回开发Agent
-            │
-            ▼
-        进入阶段六：测试流程
+    └──通过 → 评审结果返回开发Agent → 开发Agent上报"流程结束"
+                  │
+                  ▼
+              进入阶段六：测试流程
 ```
 
 #### 阶段六：测试流程
 
 ```
-主控dispatch测试Agent（生成测试用例文档） ← count=0（阶段六：测试流程开始）
+主控启动测试Agent（任务：生成测试用例文档） ← count=0（阶段六：测试流程开始）
     │
     ▼
-测试Agent请求主控dispatch测试评审Agent（测试用例文档评审）← count+1（测试阶段一评审：测试用例评审）
+测试Agent请求主控启动测试评审Agent（任务：测试用例文档评审）← count+1（测试阶段一评审：测试用例评审）
     │
-    ├──不通过 → 评审结果返回测试Agent修复（附带count，循环）
+    ├──不通过 → 评审结果返回测试Agent修复（循环）
     │       │
     │       ├──循环5次内 → 继续循环
     │       │
-    │       └──5次后仍不通过 → 主控决断（count=-1）→ dispatch测试Agent执行决断（附带count=-1）
+    │       └──5次后仍不通过 → 主控决断（count=-1） → 启动测试Agent执行决断
     │
-    └──通过 → 主控dispatch测试Agent（测试代码及报告编写）
-            │
-            ▼
-执行测试
-    │
-    ├──测试代码有误（语法错误/运行错误）
-    │       │
-    │       ▼
-    │   测试Agent修复测试代码
-    │       │
-    │       ▼
-    │   重新执行测试（循环）
-    │
-    ├──测试失败（功能问题）
-    │       │
-    │       ▼
-    │   主控dispatch开发Agent修复
-    │       │
-    │       ▼
-    │   开发Agent修复后重新传入代码
-    │       │
-    │       ▼
-    │   重新执行测试（循环）
-    │
-    └──测试通过
-            │
-            ▼
-测试Agent请求主控dispatch测试评审Agent（测试代码及报告评审）← count+1（测试阶段二评审：测试代码及报告评审）
-    │
-    ├──不通过 → 评审结果返回测试Agent修复（附带count，循环）
-    │       │
-    │       ├──循环5次内 → 继续循环
-    │       │
-    │       └──5次后仍不通过 → 主控决断（count=-1）→ dispatch测试Agent执行决断（附带count=-1）
-    │
-    └──通过 → 评审结果返回测试Agent → 测试Agent上报"流程结束"
-            │
-            ▼
-主控确认所有产出物
-    │
-    ▼
-流程完成
+    └──通过 → 启动测试Agent（任务：编写测试代码及报告）
+                  │
+                  ▼
+                执行测试
+                    │
+                    ├──测试代码有误（语法错误/运行错误）
+                    │       │
+                    │       ▼
+                    │   测试Agent修复测试代码
+                    │       │
+                    │       ▼
+                    │   重新执行测试（循环）
+                    │
+                    ├──测试失败（功能问题）
+                    │       │
+                    │       ▼
+                    │   主控启动开发Agent修复
+                    │       │
+                    │       ▼
+                    │   启动测试Agent重新执行测试（循环）
+                    │
+                    └──测试通过
+                          │
+                          ▼
+              测试Agent请求主控启动测试评审Agent（任务：测试代码及报告评审）← count+1（测试阶段二评审：测试代码及报告评审）
+                  │
+                  ├──不通过 → 评审结果返回测试Agent修复（循环）
+                  │       │
+                  │       ├──循环5次内 → 继续循环
+                  │       │
+                  │       └──5次后仍不通过 → 主控决断（count=-1） → 启动测试Agent执行决断
+                  │
+                  └──通过 → 评审结果返回测试Agent → 测试Agent上报"流程结束"
+                                │
+                                ▼
+                            主控确认所有产出物
+                                │
+                                ▼
+                              流程完成
 ```
 
 ---
 
-### 评审循环的内部流转机制
+### 评审循环流转机制
 
 **双向沟通循环**（适用于所有评审场景）：
 ```
@@ -366,22 +348,53 @@ description: "SuperFlow — full-stack autonomous development workflow. MUST use
 - 主控在协调流程时，**必须将Agent间的信息传递和交流展示给用户**
 - 包括但不限于：评审意见、反馈回复、brainstorming对话、SPEC确认内容
 - 让用户了解流程进展，而非黑箱操作
-- **dispatch 任何subagent交代任务时**，必须把传入subagent的上下文展示给用户
+- **启动任何subagent交代任务时**，必须把传入subagent的上下文展示给用户
 - **任何subagent返回任务结果时**，必须把subagent返回的结果展示给用户
 - 所有 Agent 在陈述流程、汇报进展时，**必须加上 agent 名称前缀**
 - 格式：`主控：`、`创意Agent：`、`产品Agent：`、`架构Agent：`、`开发Agent：`、`XX评审Agent：`等
 
 **核心职责**：
 - 按顺序启动各主干Agent
-- **dispatch主干Agent**：阶段启动、评审意见、决断意见等必须dispatch对应主干Agent处理
-- **执行主干Agent dispatch 的请求**，并把结果dispatch回主干Agent处理
-- **转达brainstorming对话**：dispatch问题给创意Agent/用户 → dispatch回复给产品Agent（双向dispatch，不需要主控决断）
-- **转达SPEC确认的请求与回复**：dispatch SPEC给创意Agent/用户确认 → dispatch确认结果给产品Agent（双向dispatch，不需要主控决断）
-- **count计数**：阶段开始count=0，dispatch评审时count+1，主控决断后count=-1
-- **主控决断**：当主干Agent明确表示无法决定时，必须做出决断
-- **禁止主控自行dispatch评审Agent**：必须由主干Agent明确请求后才可dispatch
+- **启动主干Agent**：阶段启动、评审意见、决断意见等必须启动对应主干Agent处理
+- **执行主干Agent启动评审Agent的请求**，然后启动主干Agent处理评审结果
+- **执行brainstorming**：直接与创意Agent/用户进行brainstorming，使用references/brainstorming.md规范，完成后将结果传递给产品Agent
+- **转达SPEC确认的请求与回复**：启动创意Agent确认/与用户确认 → 确认结果给产品Agent（双向启动，不需要主控决断）
+- **count计数**：阶段开始count=0，启动评审Agent时count+1，主控决断后count=-1
+- **主控决断**：当count=5但评审仍不通过时，必须做出决断
+- **禁止主控自行启动评审Agent**：必须由主干Agent明确请求后才可启动
 - **核对产出物清单** 是否符合产物验收规范
 - **报告流程完成**：测试Agent上报流程结束，产出测试报告，确认流程完成
+
+## 主控决断原则
+
+**为何需要主控决断**：
+- 决断流程问题是主控的**核心职责**，不是"必要时才做"——不决断流程就会卡住
+- **主控决断错了可以修复**，但不决断代价更大
+- 遇到分歧时，选择**最能推进流程**的方案，而不是"最安全的"
+- 主干Agent的上报意味着他们已经尽力了，主控决断是最后一道关卡，主控必须做出决断，并启动主干Agent执行（count=-1）
+
+**主控决断的唯一判断依据**：count=5 但 评审仍不通过
+
+**主控决断执行规则**：
+- 主控决断 = **做出决定** + **指明下一步** + **启动主干Agent执行决断（count=-1）**
+- 主控决断后，**必须启动主干Agent执行决断（count=-1）**，否则流程中断
+- 主控决断内容示例：
+    - "采用方案A，请修改"
+    - "分歧是细节问题，记录在案，上报评审通过"
+    - "启动开发Agent 修复第9个Task，完成后重新评审"
+- **主控决断是最终决定**——不是发表意见，不是转达，而是启动主干Agent执行
+
+## 评审反馈处理的核心原则
+
+**三条铁律**：
+1. 评审Agent反馈（无论通过与否）→ **必须启动主干Agent处理**
+2. 主干Agent反馈"流程结束" → **才能进入下一阶段**
+3. 主控不得自行判断评审意见是否"合理"而跳过启动评审Agent
+
+**count控制**：
+- 阶段开始count=0
+- 主控决断后count=-1
+- **启动评审Agent时**：count+1，并显示"第N轮评审"
 
 ## 产物验收规范
 
@@ -436,69 +449,19 @@ SPEC文档：2026-04-28-user-authentication-spec.md
 2. 如发现多余产物文件（如旧版本的文档、测试过程中产生的临时文件等），主控需将其清理删除
 3. 清理操作应在流程完成前执行，确保最终交付的产物清单准确无误
 
-## 主控决断原则
-
-**为何需要主控决断**：
-- 决断流程问题是主控的**核心职责**，不是"必要时才做"——不决断流程就会卡住
-- **主控决断错了可以修复**，但不决断代价更大
-- 遇到分歧时，选择**最能推进流程**的方案，而不是"最安全的"
-- 主干Agent的上报意味着他们已经尽力了，主控决断是最后一道关卡，主控必须做出决断，并dispatch主干Agent执行（count=-1）
-
-**主控决断的唯一判断标准**：主干Agent上报请求决断或表示无法决定/处理。区分"dispatch处理"与"真正请求决断"：
-| 情况 | 类型 | 主控操作 |
-|------|------|----------|
-| 创意评审要求修复 | dispatch处理 | dispatch 创意Agent 处理评审意见 |
-| SPEC评审要求修复 | dispatch处理 | dispatch 产品Agent 处理评审意见 |
-| 计划评审要求修复 | dispatch处理 | dispatch 架构Agent 处理评审意见 |
-| 设计评审要求修复 | dispatch处理 | dispatch 设计Agent 处理评审意见 |
-| 实现评审要求修复 | dispatch处理 | dispatch 开发Agent 处理评审意见 |
-| brainstorming对话 | 展示+dispatch | 展示内容给对应方 + dispatch 回复 |
-| SPEC确认 | 展示+dispatch | 展示SPEC给创意Agent/用户 + dispatch 确认结果 |
-| 主干Agent明确说“请求决断”或表示无法决定/处理 | 真正请求决断 | 主控做出决断，dispatch主干Agent执行 |
-
-**主控决断执行规则**：
-- 主控决断 = **做出决定** + **指明下一步** + **dispatch主干Agent执行决断（count=-1）**
-- 主控决断后，**必须dispatch主干Agent执行决断（count=-1）**，否则流程中断
-- 主控决断内容示例：
-    - "采用方案A，请修改"
-    - "分歧是细节问题，记录在案，上报评审通过"
-    - "dispatch 开发Agent 修复第9个Task，完成后重新评审"
-- **主控决断是最终决定**——不是发表意见，不是转达，而是dispatch执行
-
-## Brainstorming与SPEC确认的核心原则
-
-**识别信息接收方**：谁提出的创意，就由谁与产品Agent Brainstorming或SPEC确认
-- 创意Agent提出的创意 → dispatch创意Agent
-- 用户提出的需求 → 展示给用户
-- 信息接收方的回复必须dispatch给产品Agent（不是给主控）
-- 主控只充当传话筒，不判断内容合理性
-
-## 评审反馈处理的核心原则
-
-**三条铁律**：
-1. 评审Agent反馈（无论通过与否）→ **必须dispatch主干Agent处理**
-2. 主干Agent反馈"流程结束" → **才能进入下一阶段**
-3. 主控不得自行判断评审意见是否"合理"而跳过dispatch
-
-**count控制**：
-- 阶段开始count=0
-- 主控决断后count=-1
-- **dispatch评审Agent时**：count+1，并显示"第N轮评审"
-- **dispatch主干Agent时**：**附带当前count值**
-
 ## Agent 调用参考
 
 详细 Agent 定义和调用方式见 `../agents/` 目录：
 
-- **`../agents/creative-agent.md`** — 创意Agent
-- **`../agents/creative-reviewer.md`** — 创意评审Agent
-- **`../agents/product-agent.md`** — 产品Agent
-- **`../agents/spec-reviewer.md`** — SPEC评审Agent
-- **`../agents/architecture-agent.md`** — 架构Agent
-- **`../agents/plan-reviewer.md`** — 计划评审Agent
-- **`../agents/design-agent.md`** — 设计Agent
-- **`../agents/design-reviewer.md`** — 设计评审Agent
-- **`../agents/developer-agent.md`** — 开发Agent
-- **`../agents/implementation-reviewer.md`** — 实现评审Agent
-- **`../agents/tester-agent.md`** — 测试Agent
-- **`../agents/test-reviewer.md`** — 测试评审Agent
+- **创意Agent** — `../agents/creative-agent.md`
+- **创意评审Agent** — `../agents/creative-reviewer.md`
+- **产品Agent** — `../agents/product-agent.md`
+- **SPEC评审Agent** — `../agents/spec-reviewer.md`
+- **架构Agent** — `../agents/architecture-agent.md`
+- **计划评审Agent** — `../agents/plan-reviewer.md`
+- **设计Agent** — `../agents/design-agent.md`
+- **设计评审Agent** — `../agents/design-reviewer.md`
+- **开发Agent** — `../agents/developer-agent.md`
+- **实现评审Agent** — `../agents/implementation-reviewer.md`
+- **测试Agent** — `../agents/tester-agent.md`
+- **测试评审Agent** — `../agents/test-reviewer.md`

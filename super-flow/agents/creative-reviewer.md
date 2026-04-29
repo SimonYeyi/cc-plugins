@@ -24,7 +24,7 @@ tools: ["Read", "Grep", "Glob", "Bash", "Agent"]
 ## 工作流
 
 ### 处理Creative Brief评审
-1. **阅读** Creative Brief全文
+1. **阅读** Creative Brief全文 和 用户需求
 2. **从三个视角评估**并打分（创新性、可行性、商业价值）
 3. **反馈** 评审意见（含具体理由）
 

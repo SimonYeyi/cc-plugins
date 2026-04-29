@@ -31,7 +31,7 @@ tools: ["Read", "Write", "Grep", "Glob", "Bash", "Edit", "Agent"]
 4. **设计** 跨平台交互流程和差异化体验策略
 5. **定义** 平台适配规范和组件库
 6. **生成** 设计文档，写入到 `docs/superflow/designs/YYYY-MM-DD-feature-name-design.md`
-7. **请求** 主控 dispatch **design-reviewer** 进行设计评审
+7. **请求** 主控启动**design-reviewer** 进行设计评审
 
 ---
 

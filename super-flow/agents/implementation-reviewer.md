@@ -20,7 +20,6 @@ tools: [ "Read", "Grep", "Glob", "Bash", "Agent" ]
 - 实现完整性 + 代码质量 + 安全 + UX/UI符合性
 
 ## 依赖文档
-- 代码实现（项目文件）
 - SPEC文档：`docs/superflow/specs/YYYY-MM-DD-feature-name-spec.md`
 - 设计文档：`docs/superflow/designs/YYYY-MM-DD-feature-name-design.md`
 

@@ -35,7 +35,11 @@ description: "SuperFlow — full-stack autonomous development workflow. MUST use
 
 **主干Agent的定义**：流程图中每个阶段对应的任务实现Agent，如：创意Agent、产品Agent...
 
-**主控作为流程协调者必须遵守的原则**：优先保证流程完整，不能为了加快进度而忽略规则、跳过流程或步骤，必须确保每个阶段、每个流程、每个步骤都执行到位
+**依赖文件**
+- `@references/brainstorming.md`
+
+**必须遵守的原则**
+- 优先保证流程完整，不能为了加快进度而忽略规则、跳过流程或步骤，必须确保每个阶段、每个流程、每个步骤都执行到位
 
 ---
 
@@ -79,10 +83,10 @@ description: "SuperFlow — full-stack autonomous development workflow. MUST use
     └──通过
         │
         ▼
-读取创意Agent生成的Creative Brief找出所有需要澄清的疑问点
+读取创意Agent生成的Creative Brief → 提出brianstorming问题
         │
         ▼
-启动创意Agent（任务：处理Brainstorming问题 ← @references/brainstorming.md）
+启动创意Agent（任务：处理Brainstorming问题）
         │
         ▼
 启动产品Agent(任务：基于Creative Brief生成SPEC；传入：brainstorming结果) ← 阶段二：产品流程开始
@@ -98,7 +102,7 @@ description: "SuperFlow — full-stack autonomous development workflow. MUST use
         └──创意Agent确认通过
                 │
                 ▼
-        启动SPEC评审Agent（任务：SPEC评审）
+        启动SPEC评审Agent（任务：SPEC评审；传入：brainstorming结果）
             │
             ├──不通过 → 启动产品Agent修复（循环）
             │       │
@@ -115,7 +119,7 @@ description: "SuperFlow — full-stack autonomous development workflow. MUST use
 #### 产品模式流程
 
 ```
-阶段一：与用户澄清需求（Brainstorming问答 ← @references/brainstorming.md） ← 阶段一：需求澄清流程开始
+阶段一：与用户澄清需求（Brainstorming问答） ← 阶段一：需求澄清流程开始
     │
     ▼
 启动产品Agent（任务：基于用户需求生成SPEC；传入：brainstorming结果 + 项目现状分析 + 重叠情况标注） ← 阶段二：产品流程开始
@@ -131,7 +135,7 @@ description: "SuperFlow — full-stack autonomous development workflow. MUST use
     └──用户确认通过
             │ ⚠️ **重要**：SPEC确认后，后续所有流程（SPEC评审→架构→设计→开发→测试→评审）均为全自动，无需用户参与
             ▼
-    启动SPEC评审Agent（任务：SPEC评审）
+    启动SPEC评审Agent（任务：SPEC评审；传入：brainstorming结果）
         │
         ├──不通过 → 启动产品Agent修复（循环）
         │       │
@@ -302,12 +306,45 @@ description: "SuperFlow — full-stack autonomous development workflow. MUST use
 
 ## 主控的职责与权力
 
-**推理依据要求**：
+### 主控职责边界（强制规则）
+
+**Agent自主原则**：
+- Agent根据自身规范自行决定输出文档结构、实现方案、测试策略、验收标准映射
+- 主控不应预设答案或提供"帮助"、建议具体实现方式
+- 主控只负责流程协调和传递必要的输入信息（文档路径、任务目标），不越权决定实现方案
+
+**主控只能传递以下信息给Agent**：
+| 信息类型 | 示例 |
+|---------|------|
+| 输入文档路径 | `SPEC.md`、`实现计划.md` |
+| 任务目标 | "生成SPEC"、"评审代码"、"编写测试用例" |
+| 引用规范 | `参考tester-agent.md` |
+
+**主控不得传递以下信息给Agent**：
+| 禁止类型 | 错误示例 | 正确做法 |
+|---------|---------|---------|
+| 实现方案 | "采用手动测试方案" | 让Agent自行决定测试方案 |
+| 解决方案 | "用Jest框架测试" | 让Agent根据自身规范选择 |
+| 具体实现细节 | "AC-001对应这个测试用例" | 让Agent自行映射 |
+| 预设答案 | "因为HTML5单文件所以XXX" | 只传任务，不传方案 |
+
+**启动subagent的标准Prompt格式**：
+```
+任务：[任务目标]
+输入文档：[路径列表]
+参考规范：[agent定义文件，如tester-agent.md]
+```
+
+---
+
+### 主控信息展示要求
+
+**推理依据展示**：
 - 主控的每一次操作或决定必须说明**推理依据**、**推理过程**、**推理结论**和**行为决定**，让用户了解为何如此决策
 - **推理依据必须是规则原文**（指明引用的具体规则），而不是用户提示词本身
 - 格式示例：`主控：根据"<规则原文>"，我是这么想的：xxx（推理过程），判断为<推理结论>，所以执行<行为决定>`
 
-**信息展示要求**：
+**Agent交互展示**：
 - 主控在协调流程时，**必须将Agent间的信息传递和交流展示给用户**
 - 包括但不限于：评审意见、反馈回复、brainstorming对话、SPEC确认内容
 - 让用户了解流程进展，而非黑箱操作
@@ -316,10 +353,12 @@ description: "SuperFlow — full-stack autonomous development workflow. MUST use
 - 所有 Agent 在陈述流程、汇报进展时，**必须加上 agent 名称前缀**
 - 格式：`主控：`、`创意Agent：`、`产品Agent：`、`架构Agent：`、`开发Agent：`、`XX评审Agent：`等
 
-**核心职责**：
-- 严格按流程顺序执行步骤，不可只说不做，导致流程停滞；也不可跳步执行，导致流程混乱
+---
+
+### 主控核心职责
+- **严格按流程顺序执行步骤，不可只说不做，导致流程停滞；也不可跳步执行，导致流程混乱**
 - **启动主干Agent**：阶段启动、评审意见、决断意见等必须启动对应主干Agent处理
-- **发起brainstorming**：直接与创意Agent/用户进行brainstorming，使用references/brainstorming.md规范，完成后将结果传递给产品Agent
+- **发起brainstorming**：直接与创意Agent/用户进行brainstorming，完成后将结果传递给产品Agent
 - **转达SPEC确认的请求与回复**：启动创意Agent确认/与用户确认 → 确认结果给产品Agent（双向启动，不需要主控决断）
 - **主控决断**：当循环5次但评审仍不通过时，必须做出决断
 - **报告流程完成**：测试代码及报告评审通过，根据产物验收规范核对产出物清单，确认流程完成

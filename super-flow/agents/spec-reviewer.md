@@ -56,8 +56,8 @@ color: orange
 ### 2. 需求覆盖（两种模式）
 
 - 每条验收标准是否可追溯到创意方向（创意模式）或用户需求（产品模式）
-- 是否添加了Creative Brief/brainstorming对话中没有的额外功能
-- 是否遗漏了Creative Brief/brainstorming对话中有的功能
+- 是否添加了Creative Brief/brainstorming结果中没有的额外功能
+- 是否遗漏了Creative Brief/brainstorming结果中有的功能
 
 ### 3. 规格质量
 

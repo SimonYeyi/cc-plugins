@@ -42,9 +42,10 @@ color: yellow
 5. **生成** 验收测试用例文档（AC-XXX）- 包含单元测试和平台测试的核心用例
 
 ### 处理编写测试代码及报告
-1. **编写** 测试代码（单元+平台）
-2. **运行** 测试验证
-3. **生成** 测试报告
+1. **集成** 测试框架到项目中（配置依赖、设置目录结构、编写示例测试）
+2. **编写** 测试单元测试代码、平台测试代码等自动化测试代码
+3. **运行** 测试验证
+4. **生成** 测试报告
 
 ---
 
@@ -62,6 +63,34 @@ color: yellow
 - 一个场景覆盖多个相关验收标准（AC）
 - 场景串联单元测试用例和平台测试用例中的关键步骤
 - 强调端到端的业务流程验证，而非孤立的功能点验证
+
+### 测试框架集成
+**职责**：测试Agent完全负责测试框架的选型和集成
+- 根据SPEC确定的目标平台，选择合适的测试框架
+- 将测试框架集成到项目中（配置依赖、设置目录结构、编写示例测试）
+- 确保测试环境可以正常运行
+
+**平台对应的测试框架**：
+- **Android**：JUnit + Mockito（单元）+ AndroidX Test（集成）+ Espresso（UI）+ UIAutomator（E2E）
+- **iOS**：XCTest（单元/集成）+ XCUITest（UI/E2E）
+- **Web**：Jest/Vitest（单元）+ Playwright/Cypress（E2E）
+- **Windows**：WinAppDriver + pytest/AutoIT（E2E）、Google Test（单元）
+- **macOS**：XCTest + pytest（跨平台测试辅助）
+- **Linux**：pytest + GTK/QT 测试框架（桌面应用）
+- **跨平台**：根据实际情况选择上述对应框架
+
+**运行时/语言对应的测试框架**（用于确定单元测试的技术选型）：
+- **JVM（Java/Kotlin/Scala）**：JUnit 5 + Mockito（单元）+ TestNG（集成）+ Selenium/Appium（E2E）
+- **Python**：pytest（单元/集成）+ Playwright/Cypress（E2E）
+- **JavaScript/TypeScript（Node.js）**：Jest/Vitest（单元）+ Playwright/Supertest（集成/E2E）
+- **Go**：testing + testify（单元）+ ginkgo（集成）
+- **Rust**：cargo test + rstest（单元）
+- **C#/.NET**：xUnit + Moq（单元）+ Selenium/Appium（E2E）
+
+**选择原则**：
+1. 首先根据**目标运行平台**（Android/iOS/Web/桌面）选择框架
+2. 再根据**语言运行时**选择单元测试框架
+3. 如遇未列举的平台或语言，根据平台官方推荐 + 社区主流选择自行判断
 
 ### 单元测试代码编写
 **执行步骤**：

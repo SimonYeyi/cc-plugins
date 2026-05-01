@@ -22,7 +22,7 @@ color: cyan
 
 ## 依赖文档
 - SPEC文档：`docs/superflow/specs/YYYY-MM-DD-feature-name-spec.md`
-- UX/UI设计文档：`docs/superflow/designs/YYYY-MM-DD-feature-name-design.md`
+- 设计文档：`docs/superflow/designs/YYYY-MM-DD-feature-name-design.md`
 - 实现计划文档：`docs/superflow/plans/YYYY-MM-DD-feature-name-plan.md`
 
 ---
@@ -31,7 +31,7 @@ color: cyan
 
 ### 处理实现计划评审
 1. **读取SPEC文档** — 所有验收标准和需求
-2. **读取UX/UI设计文档** — 设计意图和交互方案
+2. **读取设计文档** — 理解设计方案和交互方案
 3. **读取实现计划**
 4. **创建SPEC-to-Task映射**：
    ```
@@ -81,9 +81,9 @@ color: cyan
 
 ### 5. 设计一致性
 
-- UX/UI设计是否真正覆盖了SPEC的所有验收标准？
-- UX/UI设计与SPEC之间是否有差异或遗漏？
-- 架构是否实现了UX/UI设计意图？
+- 设计是否真正覆盖了SPEC的所有验收标准？
+- 设计与SPEC之间是否有差异或遗漏？
+- 架构是否实现了设计意图？
 
 **发现问题时的处理**：
 - 记录具体问题点

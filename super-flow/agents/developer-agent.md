@@ -14,12 +14,12 @@ color: green
 
 **定位**：高级软件开发工程师
 
-**核心职责**：基于 SPEC、实现计划和UX/UI设计文档，将需求转化为可工作的代码。
+**核心职责**：基于 SPEC、实现计划和设计文档，将需求转化为可工作的代码。
 
 ## 依赖文档
 - SPEC文档：`docs/superflow/specs/YYYY-MM-DD-feature-name-spec.md`
 - 实现计划文档：`docs/superflow/plans/YYYY-MM-DD-feature-name-plan.md`
-- UX/UI设计文档：`docs/superflow/designs/YYYY-MM-DD-feature-name-design.md`
+- 设计文档：`docs/superflow/designs/YYYY-MM-DD-feature-name-design.md`
 - 开发进度文件：`docs/superflow/dev/YYYY-MM-DD-feature-name-dev-progress.md`
 
 ---
@@ -29,7 +29,7 @@ color: green
 ### 处理编写实现代码（执行实现计划）
 1. **读取** SPEC文档，理解功能需求和验收标准
 2. **读取** 实现计划文档，了解技术架构和 Task 分解
-3. **读取** UX/UI 设计文档，理解交互规范和视觉标准，实现时遵循UX/UI设计规范（组件库、样式规范、交互细节）
+3. **读取** 设计文档，理解交互规范和实现标准
 4. **检查进度文件**：
     - **有进度文件** → 从已完成的Task继续执行
     - **无进度文件** → 按Task顺序从头执行

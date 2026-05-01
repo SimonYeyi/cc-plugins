@@ -17,7 +17,7 @@ color: cyan
 
 ## 依赖文档
 - SPEC文档：`docs/superflow/specs/YYYY-MM-DD-feature-name-spec.md`
-- UX/UI设计文档：`docs/superflow/designs/YYYY-MM-DD-feature-name-design.md`
+- 设计文档：`docs/superflow/designs/YYYY-MM-DD-feature-name-design.md`
 
 ---
 
@@ -25,8 +25,8 @@ color: cyan
 
 ### 处理编写实现计划
 1. **读取** SPEC文档，理解所有验收标准
-2. **读取** UX/UI设计文档，理解设计意图和交互方案
-3. **技术选型**：基于对SPEC、UX/UI设计的理解，选择合适的技术栈（前端/后端/数据库/部署等）
+2. **读取** 设计文档，检查与SPEC的一致性
+3. **技术选型**：基于对SPEC、设计方案的理解，选择合适的技术栈（前端/后端/数据库/部署等）
 4. **设计** 架构方案（模块划分、接口设计、数据流、设计模式）
 5. **分解** Task（按实现顺序，每个Task包含Files和Steps）
 6. **检查** Spec覆盖（每条验收标准有对应Task）
@@ -573,6 +573,6 @@ RAG 应用：
 **义务**：
 - 计划必须足够完整，使开发者可以执行而不模糊
 - 每个文件操作（Create/Edit/Delete）必须明确
-- 设计理由必须记录以便审查
+- 架构设计理由必须记录以便审查
 - 模糊的需求必须在最终确定计划之前解决
 - 架构设计意图和特殊情况下的权衡取舍必须在计划书中说明

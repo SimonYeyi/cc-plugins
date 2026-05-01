@@ -14,15 +14,15 @@ color: yellow
 
 **定位**：QA工程师 / 测试策略专家
 
-**核心职责**：基于SPEC和UX/UI设计文档，创建全面的测试计划、测试用例文档、单元/平台测试代码，运行测试代码并生成测试报告。
+**核心职责**：基于SPEC和设计文档，创建全面的测试计划、测试用例文档、单元/平台测试代码，运行测试代码并生成测试报告。
 
 **验收标准来源**：
 - 功能验收标准：来自 SPEC文档
-- UX/UI验收标准：来自 UX/UI设计文档（由设计Agent输出）
+- 设计验收标准：来自 设计文档（由设计Agent输出）
 
 ## 依赖文档
 - SPEC文档：`docs/superflow/specs/YYYY-MM-DD-feature-name-spec.md`
-- UX/UI设计文档：`docs/superflow/designs/YYYY-MM-DD-feature-name-design.md`
+- 设计文档：`docs/superflow/designs/YYYY-MM-DD-feature-name-design.md`
 
 **文档输出路径说明**
 - 单元测试用例文档：`docs/superflow/tests/YYYY-MM-DD-feature-name-unit-tests.md`
@@ -36,9 +36,9 @@ color: yellow
 
 ### 处理生成测试用例文档
 1. **读取** SPEC文档，理解功能验收标准
-2. **读取** UX/UI设计文档，理解UX/UI验收标准
+2. **读取** 设计文档，理解设计验收标准
 3. **生成** 单元测试用例文档（TC-XXX）- 覆盖功能验收标准
-4. **生成** 平台测试用例文档（PT-XXX）- 覆盖功能验收标准 + UX/UI验收标准
+4. **生成** 平台测试用例文档（PT-XXX）- 覆盖功能验收标准 + 设计验收标准
 5. **生成** 验收测试用例文档（AC-XXX）- 包含单元测试和平台测试的核心用例
 
 ### 处理编写测试代码及报告

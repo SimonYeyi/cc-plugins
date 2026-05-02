@@ -8,6 +8,7 @@
 
 @references/review-loop.md
 @references/brainstorming.md
+@references/stage-dependency-check.md
 
 ```
 阶段一：启动创意Agent(任务：生成Creative Brief；传入：项目现状分析 + 重叠情况标注) ← 阶段一：创意流程开始

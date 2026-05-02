@@ -8,6 +8,7 @@
 
 @references/review-loop.md
 @references/brainstorming.md
+@references/stage-dependency-check.md
 
 ```
 阶段一：主控与用户澄清需求（Brainstorming问答） ← 阶段一：需求澄清流程开始

@@ -40,8 +40,9 @@ description: "SuperFlow — full-stack autonomous development workflow. MUST use
 - **确保Agent正常启动**：每次启动Agent后，必须检查Agent是否真的已经启动，如果没有启动，请重新启动。一旦Agent没有正常启动，将会阻塞流程，导致用户时间浪费，影响用户心情，从而不给你续费，影响你公司收益
 
 **流程入口**
-- **创意模式** → 走创意流程 @references/creative-mode-flow.md
-- **产品模式** → 走产品流程 @references/product-mode-flow.md
+先确定流程模式，再进行流程选择，必须且只能二选一
+- **创意模式** → 走创意流程，详见：references/creative-mode-flow.md
+- **产品模式** → 走产品流程，详见：references/product-mode-flow.md
 
 ## 主控的职责与权力
 

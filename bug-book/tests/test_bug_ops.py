@@ -448,6 +448,16 @@ def test_match_single_to_single():
     assert _match_path("auth/login.ts", "auth") is True
 
 
+def test_match_simple_name():
+    """TC-G16: Simple name 匹配（文件名 vs 完整路径）"""
+    # 文件名应该能匹配包含该文件名的完整路径
+    assert _match_path("login.ts", "src/auth/login.ts") is True
+    assert _match_path("index.html", "public/index.html") is True
+    
+    # 不匹配的情况
+    assert _match_path("other.ts", "src/auth/login.ts") is False
+
+
 # ============================================================
 # TC-H01 ~ TC-H07：recall_by_path / recall_by_pattern 路径召回
 # ============================================================
@@ -517,6 +527,19 @@ def test_recall_by_pattern_no_match():
     add_bug(title="nomatch", phenomenon="", verified=True, recalls=["xyz/*"])
     results = recall_by_pattern("auth")
     assert not any(r["title"] == "nomatch" for r in results)
+
+
+def test_recall_by_simple_name():
+    """TC-H08: Simple name 召回（文件名 vs 完整路径）"""
+    bug_id, _ = add_bug(
+        title="菜谱表单bug",
+        phenomenon="",
+        verified=True,
+        paths=["lib/pages/recipe_form_page.dart"],
+    )
+    # 使用 simple name 应该能召回
+    results = recall_by_path("recipe_form_page.dart")
+    assert any(r["id"] == bug_id for r in results)
 
 
 # ============================================================

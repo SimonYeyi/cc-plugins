@@ -198,10 +198,25 @@ def _normalize_path(path: str) -> str:
 
 
 def _match_path(file_path: str, pattern: str) -> bool:
-    """判断文件路径是否匹配 pattern。"""
+    """判断文件路径是否匹配 pattern。
+    
+    支持的匹配方式：
+    1. 目录通配符：auth/* → 匹配 auth/ 目录下的所有文件
+    2. 单段匹配：auth → 匹配路径中包含 auth 段的文件
+    3. 多段前缀：src/auth → 匹配以 src/auth 开头的路径
+    4. Simple name 匹配：如果 file_path 只是文件名，pattern 是完整路径，检查文件名是否在 pattern 中
+    """
     file_path = _normalize_path(file_path)
     pattern = pattern.rstrip("/")
     file_segs = [s for s in file_path.split("/") if s]
+
+    # 特殊情况：file_path 只是文件名（无路径分隔符）
+    # 例如：file_path="recipe_form_page.dart", pattern="lib/pages/recipe_form_page.dart"
+    if len(file_segs) == 1 and "/" in pattern:
+        # 检查文件名是否在 pattern 的任意段中
+        pat_segs = [s for s in pattern.split("/") if s]
+        if file_segs[0] in pat_segs:
+            return True
 
     if pattern.endswith("/*"):
         base = pattern[:-2]

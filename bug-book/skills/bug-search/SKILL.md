@@ -1,5 +1,5 @@
 ---
-name: Bug Search
+name: bug-search
 description: 当需要搜索和召回历史 Bug 记录。核心触发场景：1. 用户主动搜索 Bug；2. **AI 准备修改代码前，必须调用此技能进行路径召回（recall_by_path）以检查历史报错**；3. 查询特定模块的已知缺陷。
 ---
 
@@ -57,7 +57,7 @@ results = recall_by_path("src/auth/login.ts", limit=10)
 - 精确匹配：`src/auth/login.ts` → 匹配记录中 paths 包含该文件的 bugs
 - 模式匹配：`src/auth/*` → 匹配 autoRecall 中包含 `auth/*` 的 bugs
 
-#### 2.3 按影响关系召回（新功能）
+#### 2.2 按影响关系召回
 
 当 AI 即将修改某个文件时，查询哪些历史 bug 的修复曾影响过该文件：
 
@@ -104,7 +104,7 @@ impacted = get_impacted_bugs("src/cart/checkout.ts", limit=10)
 💡 **建议**：修改时务必检查与 auth/session 的交互逻辑
 ```
 
-#### 2.2 按 autoRecall 模式召回
+#### 2.3 按 autoRecall 模式召回
 
 ```python
 from scripts.bug_ops import recall_by_pattern
@@ -121,7 +121,7 @@ results = recall_by_pattern("session", limit=10)
 - 用户说：“帮我找找所有和 session 相关的 bugs”
 - AI 准备修改 auth 模块，想看看有哪些 autoRecall 模式匹配的 bugs
 
-### 4. 列表浏览
+### 3. 列表浏览
 
 当用户想查看所有 bugs 或按条件筛选时：
 
@@ -156,7 +156,7 @@ page2_bugs = list_bugs(status="active", order_by="score", limit=20, offset=20)
 > 提示：输入“查看 #3 详情”可展开完整信息
 ```
 
-### 5. 高级搜索
+### 4. 高级搜索
 
 #### 5.1 按标签搜索
 

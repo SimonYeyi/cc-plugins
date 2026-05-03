@@ -2,15 +2,11 @@
   "hooks": {
     "SessionStart": [
       {
-        "matcher": "*",
-        "description": "检查是否需要整理错题集",
         "hooks": [
           {
             "type": "command",
             "command": "python \"{CLAUDE_PLUGIN_DIR}/scripts/session_hook.py\"",
-            "timeout": 5000,
-            "silent": false,
-            "continueOnError": true
+            "timeout": 5000
           }
         ]
       }

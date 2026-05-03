@@ -11,6 +11,14 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Optional
 
+# 解决 Windows 中文乱码问题（必须在其他代码之前执行）
+if sys.platform == 'win32':
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+        sys.stderr.reconfigure(encoding='utf-8')
+    except (AttributeError, IOError):
+        pass
+
 sys.path.insert(0, str(Path(__file__).parent))
 from config import find_project_root
 
@@ -638,6 +646,21 @@ def get_bug_detail(bug_id: int) -> Optional[dict[str, Any]]:
         data["recalls"] = [r[0] for r in conn.execute(
             "SELECT pattern FROM bug_recalls WHERE bug_id = ?", (bug_id,)
         ).fetchall()]
+        data["impacts"] = [
+            {
+                "id": r[0],
+                "impacted_path": r[1],
+                "impact_type": r[2],
+                "description": r[3],
+                "severity": r[4],
+                "created_at": r[5],
+            }
+            for r in conn.execute(
+                "SELECT id, impacted_path, impact_type, description, severity, created_at "
+                "FROM bug_impacts WHERE source_bug_id = ? ORDER BY severity DESC",
+                (bug_id,),
+            ).fetchall()
+        ]
         return data
 
 
@@ -865,6 +888,177 @@ def search_by_status_and_score(
         rows = conn.execute(query, params).fetchall()
         cols = ["id", "title", "phenomenon", "score", "status", "verified", "created_at"]
         return [dict(zip(cols, r)) for r in rows]
+
+
+# ---------------------------------------------------------------------------
+# 影响关系管理
+# ---------------------------------------------------------------------------
+def add_impact(
+    source_bug_id: int,
+    impacted_path: str,
+    impact_type: str = "regression",
+    description: Optional[str] = None,
+    severity: int = 5,
+) -> int:
+    """记录 bug 的影响关系。
+    
+    Args:
+        source_bug_id: 引起影响的 bug ID
+        impacted_path: 被影响的路径/模块
+        impact_type: 影响类型（regression/side_effect/dependency）
+        description: 影响描述
+        severity: 严重程度 0-10
+    
+    Returns:
+        新创建的影响记录 ID
+    """
+    _logger.info("add_impact: source_bug_id=%d path=%s type=%s", source_bug_id, impacted_path, impact_type)
+    
+    if impact_type not in ("regression", "side_effect", "dependency"):
+        raise ValidationError(f"无效的影响类型: {impact_type}")
+    
+    if not (0 <= severity <= 10):
+        raise ValidationError(f"严重程度必须在 0-10 之间: {severity}")
+    
+    with get_conn_ctx() as conn:
+        # 检查 source_bug_id 是否存在
+        exists = conn.execute("SELECT id FROM bugs WHERE id = ?", (source_bug_id,)).fetchone()
+        if not exists:
+            raise ValidationError(f"Bug #{source_bug_id} 不存在")
+        
+        cur = conn.execute(
+            "INSERT INTO bug_impacts (source_bug_id, impacted_path, impact_type, description, severity) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (source_bug_id, _normalize_path(impacted_path), impact_type, description, severity),
+        )
+        impact_id = cur.lastrowid
+        conn.commit()
+        _logger.info("add_impact done: id=%d", impact_id)
+        return impact_id
+
+
+def get_impacted_bugs(file_path: str, limit: int = RECALL_LIMIT) -> list[dict[str, Any]]:
+    """查询会影响指定文件的 bug（通过影响关系）。
+    
+    Args:
+        file_path: 文件路径
+        limit: 返回数量限制
+    
+    Returns:
+        会影响该文件的 bug 列表，包含影响信息
+    """
+    _logger.info("get_impacted_bugs: path=%s limit=%d", file_path, limit)
+    file_path = _normalize_path(file_path)
+    
+    with get_conn_ctx() as conn:
+        rows = conn.execute(
+            """
+            SELECT DISTINCT b.id, b.title, b.phenomenon, b.score, b.status,
+                   i.impacted_path, i.impact_type, i.description, i.severity
+            FROM bugs b
+            INNER JOIN bug_impacts i ON b.id = i.source_bug_id
+            WHERE b.status = 'active'
+            ORDER BY i.severity DESC, b.score DESC
+            LIMIT ?
+            """,
+            (RECALL_BATCH_LIMIT,),
+        ).fetchall()
+        
+        # 过滤出真正匹配的文件
+        matched = []
+        for r in rows:
+            bug_id, title, phenomenon, score, status, impacted_path, impact_type, description, severity = r
+            if _match_path(file_path, impacted_path):
+                matched.append({
+                    "id": bug_id,
+                    "title": title,
+                    "phenomenon": phenomenon,
+                    "score": score,
+                    "status": status,
+                    "impacted_path": impacted_path,
+                    "impact_type": impact_type,
+                    "description": description,
+                    "severity": severity,
+                })
+        
+        return matched[:limit]
+
+
+def get_bug_impacts(bug_id: int) -> list[dict[str, Any]]:
+    """查询某个 bug 导致了哪些影响。
+    
+    Args:
+        bug_id: bug ID
+    
+    Returns:
+        该 bug 导致的影响列表
+    """
+    _logger.info("get_bug_impacts: bug_id=%d", bug_id)
+    
+    with get_conn_ctx() as conn:
+        rows = conn.execute(
+            """
+            SELECT id, impacted_path, impact_type, description, severity, created_at
+            FROM bug_impacts
+            WHERE source_bug_id = ?
+            ORDER BY severity DESC, created_at DESC
+            """,
+            (bug_id,),
+        ).fetchall()
+        
+        return [
+            {
+                "id": r[0],
+                "impacted_path": r[1],
+                "impact_type": r[2],
+                "description": r[3],
+                "severity": r[4],
+                "created_at": r[5],
+            }
+            for r in rows
+        ]
+
+
+def delete_impact(impact_id: int) -> None:
+    """删除影响记录。"""
+    _logger.info("delete_impact: id=%d", impact_id)
+    with get_conn_ctx() as conn:
+        conn.execute("DELETE FROM bug_impacts WHERE id = ?", (impact_id,))
+        conn.commit()
+
+
+def analyze_impact_patterns(limit: int = 10) -> list[dict[str, Any]]:
+    """分析高频回归模式。
+    
+    Returns:
+        按受影响次数排序的模块列表
+    """
+    _logger.info("analyze_impact_patterns: limit=%d", limit)
+    
+    with get_conn_ctx() as conn:
+        rows = conn.execute(
+            """
+            SELECT impacted_path, 
+                   COUNT(*) as impact_count, 
+                   AVG(severity) as avg_severity,
+                   MAX(severity) as max_severity
+            FROM bug_impacts
+            GROUP BY impacted_path
+            ORDER BY impact_count DESC, avg_severity DESC
+            LIMIT ?
+            """,
+            (limit,),
+        ).fetchall()
+        
+        return [
+            {
+                "path": r[0],
+                "impact_count": r[1],
+                "avg_severity": round(r[2], 2),
+                "max_severity": r[3],
+            }
+            for r in rows
+        ]
 
 
 # ---------------------------------------------------------------------------

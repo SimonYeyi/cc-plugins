@@ -27,6 +27,12 @@ from bug_ops import (
     _normalize_path,
     get_conn,
     DB_PATH,
+    ValidationError,
+    # 影响关系管理
+    add_impact,
+    get_impacted_bugs,
+    get_bug_impacts,
+    analyze_impact_patterns,
 )
 
 # 测试数据
@@ -659,3 +665,138 @@ def test_recurrence_flow():
     assert detail["verified"] == 0
     scores = dict(detail["scores"])
     assert scores["occurrences"] == 1.0
+
+
+# ============================================================
+# TC-M01 ~ TC-M08: 影响关系管理
+# ============================================================
+
+def test_add_impact_regression():
+    """TC-M01: 添加回归影响"""
+    bug_id, _ = add_bug(title="源bug", phenomenon="", verified=True)
+    impact_id = add_impact(
+        source_bug_id=bug_id,
+        impacted_path="src/cart/add_to_cart.ts",
+        impact_type="regression",
+        description="修改 session 导致购物车失效",
+        severity=8,
+    )
+    assert impact_id > 0
+    impacts = get_bug_impacts(bug_id)
+    assert len(impacts) == 1
+    assert impacts[0]["impact_type"] == "regression"
+    assert impacts[0]["severity"] == 8
+
+
+def test_add_impact_side_effect():
+    """TC-M02: 添加副作用影响"""
+    bug_id, _ = add_bug(title="源bug2", phenomenon="", verified=True)
+    impact_id = add_impact(
+        source_bug_id=bug_id,
+        impacted_path="src/user/profile.ts",
+        impact_type="side_effect",
+        severity=5,
+    )
+    assert impact_id > 0
+    impacts = get_bug_impacts(bug_id)
+    assert impacts[0]["impact_type"] == "side_effect"
+
+
+def test_add_impact_dependency():
+    """TC-M03: 添加依赖影响"""
+    bug_id, _ = add_bug(title="源bug3", phenomenon="", verified=True)
+    impact_id = add_impact(
+        source_bug_id=bug_id,
+        impacted_path="src/api/client.ts",
+        impact_type="dependency",
+        severity=3,
+    )
+    assert impact_id > 0
+    impacts = get_bug_impacts(bug_id)
+    assert impacts[0]["impact_type"] == "dependency"
+
+
+def test_add_impact_invalid_type():
+    """TC-M04: 添加无效影响类型"""
+    bug_id, _ = add_bug(title="源bug4", phenomenon="", verified=True)
+    try:
+        add_impact(
+            source_bug_id=bug_id,
+            impacted_path="src/test.ts",
+            impact_type="invalid",
+        )
+        assert False, "应该抛出 ValidationError"
+    except ValidationError:
+        pass  # 预期行为
+
+
+def test_add_impact_invalid_severity():
+    """TC-M05: 添加无效的严重程度"""
+    bug_id, _ = add_bug(title="源bug5", phenomenon="", verified=True)
+    try:
+        add_impact(
+            source_bug_id=bug_id,
+            impacted_path="src/test.ts",
+            impact_type="regression",
+            severity=15,  # 超出范围
+        )
+        assert False, "应该抛出 ValidationError"
+    except ValidationError:
+        pass  # 预期行为
+
+
+def test_get_impacted_bugs():
+    """TC-M06: 查询会影响指定文件的 bug"""
+    bug_id, _ = add_bug(title="影响测试", phenomenon="", verified=True)
+    add_impact(
+        source_bug_id=bug_id,
+        impacted_path="src/cart/add_to_cart.ts",
+        impact_type="regression",
+        description="测试描述",
+        severity=8,
+    )
+    
+    impacted = get_impacted_bugs("src/cart/add_to_cart.ts")
+    assert len(impacted) >= 1
+    # 检查返回的数据包含影响信息
+    found = False
+    for item in impacted:
+        if item["id"] == bug_id:
+            found = True
+            assert item["impact_type"] == "regression"
+            assert item["severity"] == 8
+            assert item["description"] == "测试描述"
+            break
+    assert found
+
+
+def test_get_bug_impacts():
+    """TC-M07: 查询某个 bug 的所有影响"""
+    bug_id, _ = add_bug(title="多影响测试", phenomenon="", verified=True)
+    add_impact(source_bug_id=bug_id, impacted_path="src/a.ts", severity=8)
+    add_impact(source_bug_id=bug_id, impacted_path="src/b.ts", severity=5)
+    add_impact(source_bug_id=bug_id, impacted_path="src/c.ts", severity=3)
+    
+    impacts = get_bug_impacts(bug_id)
+    assert len(impacts) == 3
+    # 按 severity DESC 排序
+    assert impacts[0]["severity"] >= impacts[1]["severity"]
+    assert impacts[1]["severity"] >= impacts[2]["severity"]
+
+
+def test_analyze_impact_patterns():
+    """TC-M08: 分析高频回归模式"""
+    # 创建多个影响记录，集中在某些路径
+    bug_id1, _ = add_bug(title="bug1", phenomenon="", verified=True)
+    bug_id2, _ = add_bug(title="bug2", phenomenon="", verified=True)
+    
+    add_impact(source_bug_id=bug_id1, impacted_path="src/cart/", severity=8)
+    add_impact(source_bug_id=bug_id2, impacted_path="src/cart/", severity=7)
+    add_impact(source_bug_id=bug_id1, impacted_path="src/auth/", severity=9)
+    
+    patterns = analyze_impact_patterns()
+    assert len(patterns) >= 2
+    # src/cart/ 应该有 2 次影响
+    cart_pattern = next((p for p in patterns if p["path"] == "src/cart/"), None)
+    assert cart_pattern is not None
+    assert cart_pattern["impact_count"] == 2

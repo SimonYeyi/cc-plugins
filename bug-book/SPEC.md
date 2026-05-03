@@ -101,6 +101,25 @@ AI 在改代码前主动查询相关 bug，主动预防而非事后补救。
 
 用于搜索和召回的标签、关键词、匹配模式。
 
+### bug_impacts 表（影响关系）
+
+记录 bug 修复对其他模块/功能的影响，用于预防回归问题。
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | INTEGER | 主键 |
+| source_bug_id | INTEGER | 引起影响的 bug ID（外键） |
+| impacted_path | TEXT | 被影响的路径/模块 |
+| impact_type | TEXT | 影响类型：regression(回归) / side_effect(副作用) / dependency(依赖) |
+| description | TEXT | 影响描述（用户原话或 AI 总结） |
+| severity | INTEGER | 严重程度 0-10 |
+| created_at | DATETIME | 创建时间 |
+
+**使用场景：**
+- 当用户说“修改 A 后 B 出问题了”时，记录影响关系
+- 改代码前查询 `get_impacted_bugs()`，预警潜在回归风险
+- 整理时调用 `analyze_impact_patterns()`，识别高频回归模块
+
 ### autoRecall 机制
 
 每条 bug 记录包含 `autoRecall` 匹配模式，当 AI 修改相关文件时自动召回。

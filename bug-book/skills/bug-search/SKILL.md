@@ -18,7 +18,7 @@ description: 当需要搜索和召回历史 Bug 记录。核心触发场景：1.
 ```python
 import sys
 sys.path.insert(0, "{CLAUDE_PLUGIN_DIR}/bug-book")
-from scripts.bug_ops import search_by_keyword
+from scripts.bug_ops import search_by_keyword, recall_by_path, get_impacted_bugs
 ```
 
 ## 搜索场景
@@ -56,6 +56,53 @@ results = recall_by_path("src/auth/login.ts", limit=10)
 **匹配规则：**
 - 精确匹配：`src/auth/login.ts` → 匹配记录中 paths 包含该文件的 bugs
 - 模式匹配：`src/auth/*` → 匹配 autoRecall 中包含 `auth/*` 的 bugs
+
+#### 2.3 按影响关系召回（新功能）
+
+当 AI 即将修改某个文件时，查询哪些历史 bug 的修复曾影响过该文件：
+
+```python
+from scripts.bug_ops import get_impacted_bugs
+
+# 查询哪些 bug 的修复会影响 src/cart/checkout.ts
+impacted = get_impacted_bugs("src/cart/checkout.ts", limit=10)
+```
+
+**返回示例：**
+```python
+[
+    {
+        "id": 42,
+        "title": "session 过期页面空白",
+        "phenomenon": "登录30分钟后刷新页面显示空白",
+        "score": 56.5,
+        "status": "resolved",
+        "impacted_path": "src/cart/add_to_cart.ts",
+        "impact_type": "regression",
+        "description": "修改 session 持久化导致购物车的用户状态判断失效",
+        "severity": 8,
+    }
+]
+```
+
+**使用场景：**
+- AI 准备修改 cart 模块，想知道之前有哪些 bug 的修复影响过这个模块
+- 用户说“小心别又搞坏了购物车”，AI 查询影响关系给出警告
+
+**展示格式：**
+```markdown
+🔴 **影响链警告**
+
+以下 bug 的修复曾影响过你即将修改的文件：
+
+- **Bug #42**: session 过期页面空白 (score: 56.5) ✅ 已验证
+  - ⚠️ 该 bug 的修复曾导致购物车模块出现问题！
+  - 影响路径：src/cart/add_to_cart.ts
+  - 影响类型：回归问题（严重度 8/10）
+  - 描述：修改 session 持久化导致购物车的用户状态判断失效
+
+💡 **建议**：修改时务必检查与 auth/session 的交互逻辑
+```
 
 #### 2.2 按 autoRecall 模式召回
 

@@ -70,6 +70,17 @@ CREATE TABLE IF NOT EXISTS bug_metadata (
     updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS bug_impacts (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    source_bug_id   INTEGER NOT NULL,
+    impacted_path   TEXT NOT NULL,
+    impact_type     TEXT NOT NULL CHECK(impact_type IN ('regression', 'side_effect', 'dependency')),
+    description     TEXT,
+    severity        INTEGER DEFAULT 5 CHECK(severity >= 0 AND severity <= 10),
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (source_bug_id) REFERENCES bugs(id) ON DELETE CASCADE
+);
+
 CREATE INDEX IF NOT EXISTS idx_bugs_score ON bugs(score DESC);
 CREATE INDEX IF NOT EXISTS idx_bugs_status ON bugs(status);
 CREATE INDEX IF NOT EXISTS idx_bugs_verified ON bugs(verified);
@@ -79,6 +90,8 @@ CREATE INDEX IF NOT EXISTS idx_paths_path ON bug_paths(path);
 CREATE INDEX IF NOT EXISTS idx_tags_tag ON bug_tags(tag);
 CREATE INDEX IF NOT EXISTS idx_keywords_keyword ON bug_keywords(keyword);
 CREATE INDEX IF NOT EXISTS idx_recalls_pattern ON bug_recalls(pattern);
+CREATE INDEX IF NOT EXISTS idx_impacts_source ON bug_impacts(source_bug_id);
+CREATE INDEX IF NOT EXISTS idx_impacts_path ON bug_impacts(impacted_path);
 """
 
 # FTS5 虚拟表用于全文搜索

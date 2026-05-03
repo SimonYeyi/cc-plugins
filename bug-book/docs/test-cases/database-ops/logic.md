@@ -18,7 +18,8 @@
 | list_bugs 列表查询 | 4 | TC-J01 ~ TC-J04 |
 | mark_invalid 失效标记 | 3 | TC-K01 ~ TC-K03 |
 | 懒初始化与集成 | 3 | TC-L01 ~ TC-L03 |
-| **总计** | **67** | |
+| **影响关系管理** | **8** | **TC-M01 ~ TC-M08** |
+| **总计** | **75** | |
 
 ---
 
@@ -170,6 +171,21 @@
 | TC-L01 | 数据库不存在时自动创建 | 删除 db，调用 add_bug | 数据库文件自动创建 | 正常流程 |
 | TC-L02 | 完整 CRUD 流程 | add→update→get→delete | 全流程无报错 | 正常流程 |
 | TC-L03 | 复发处理流程 | add→update verified=True→increment_score | verified 打回 False，累加分数，updated_at 更新 | 正常流程 |
+
+---
+
+## TC-M01 ~ TC-M08：影响关系管理
+
+| 用例编号 | 测试点描述 | 输入 | 预期输出 | 测试类型 |
+|---------|-----------|------|---------|----------|
+| TC-M01 | 添加回归影响 | `add_impact(source_bug_id=1, impacted_path="src/cart/add_to_cart.ts", impact_type="regression", description="修改 session 导致购物车失效", severity=8)` | 返回影响记录 ID，数据库中有该记录 | 正常流程 |
+| TC-M02 | 添加副作用影响 | `impact_type="side_effect"` | 正确插入，类型为 side_effect | 正常流程 |
+| TC-M03 | 添加依赖影响 | `impact_type="dependency"` | 正确插入，类型为 dependency | 正常流程 |
+| TC-M04 | 添加无效影响类型 | `impact_type="invalid"` | 抛出 ValidationError | 异常处理 |
+| TC-M05 | 添加无效的严重程度 | `severity=15` | 抛出 ValidationError（必须在 0-10） | 异常处理 |
+| TC-M06 | 查询会影响指定文件的 bug | `get_impacted_bugs("src/cart/add_to_cart.ts")` | 返回 source_bug_id=1 的 bug，包含影响信息 | 正常流程 |
+| TC-M07 | 查询某个 bug 的所有影响 | `get_bug_impacts(1)` | 返回该 bug 导致的所有影响记录 | 正常流程 |
+| TC-M08 | 分析高频回归模式 | `analyze_impact_patterns()` | 返回按受影响次数排序的模块列表 | 正常流程 |
 
 ---
 

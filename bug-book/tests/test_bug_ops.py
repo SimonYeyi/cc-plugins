@@ -535,10 +535,10 @@ def test_recall_by_simple_name():
         title="菜谱表单bug",
         phenomenon="",
         verified=True,
-        paths=["lib/pages/recipe_form_page.dart"],
+        paths=["lib/pages/user_form_page.dart"],
     )
     # 使用 simple name 应该能召回
-    results = recall_by_path("recipe_form_page.dart")
+    results = recall_by_path("user_form_page.dart")
     assert any(r["id"] == bug_id for r in results)
 
 

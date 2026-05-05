@@ -26,7 +26,7 @@ SQLite，位于项目根目录 `bug-book.db`。首次记录时自动初始化。
 | Skill | skills/bug-record/SKILL.md |
 | Skill | skills/bug-search/SKILL.md |
 | Skill | skills/bug-organize/SKILL.md |
-| Agent | agents/bug-curator.md |
+| 规则 | rules/bug-book.md |
 | 脚本 | scripts/init_db.py |
 | 脚本 | scripts/bug_ops.py |
 | 共享 | scripts/config.py |

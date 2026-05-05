@@ -135,7 +135,7 @@ def init_db() -> None:
         import sys as _sys
         print(f"FTS5 不可用，将使用LIKE搜索降级: {e}", file=_sys.stderr)
     conn.commit()
-    print(f"数据库已初始化: {DB_PATH}")
+    # 注意：不在这里 print，因为会被 Hook 调用时输出到终端
 
 
 if __name__ == "__main__":

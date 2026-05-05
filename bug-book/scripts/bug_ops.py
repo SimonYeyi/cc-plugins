@@ -211,7 +211,7 @@ def _match_path(file_path: str, pattern: str) -> bool:
     file_segs = [s for s in file_path.split("/") if s]
 
     # 特殊情况：file_path 只是文件名（无路径分隔符）
-    # 例如：file_path="recipe_form_page.dart", pattern="lib/pages/recipe_form_page.dart"
+    # 例如：file_path="user_form_page.dart", pattern="lib/pages/user_form_page.dart"
     if len(file_segs) == 1 and "/" in pattern:
         # 检查文件名是否在 pattern 的任意段中
         pat_segs = [s for s in pattern.split("/") if s]
@@ -288,38 +288,30 @@ def check_organize_reminder(days_threshold: int = 30) -> dict[str, any]:
     last_time_str = get_last_organize_time()
     
     if not last_time_str:
-        # 从未整理过
+        # 从未整理过，设置当前时间为基准，但不提醒
+        set_last_organize_time()
         return {
-            "should_remind": True,
+            "should_remind": False,
             "last_organize_time": None,
             "days_since": None,
-            "message": "错题集从未整理过，建议执行一次整理以优化记录质量。"
+            "message": None
         }
     
-    try:
-        last_time = datetime.fromisoformat(last_time_str)
-        days_since = (datetime.now() - last_time).days
-        
-        if days_since >= days_threshold:
-            return {
-                "should_remind": True,
-                "last_organize_time": last_time_str,
-                "days_since": days_since,
-                "message": f"距离上次整理已过去 {days_since} 天（超过 {days_threshold} 天），建议整理错题集。"
-            }
-        else:
-            return {
-                "should_remind": False,
-                "last_organize_time": last_time_str,
-                "days_since": days_since,
-                "message": None
-            }
-    except Exception as e:
-        _logger.error(f"解析最后整理时间失败: {e}")
+    last_time = datetime.fromisoformat(last_time_str)
+    days_since = (datetime.now() - last_time).days
+    
+    if days_since >= days_threshold:
+        return {
+            "should_remind": True,
+            "last_organize_time": last_time_str,
+            "days_since": days_since,
+            "message": f"距离上次整理已过去 {days_since} 天（超过 {days_threshold} 天），建议整理错题集。"
+        }
+    else:
         return {
             "should_remind": False,
             "last_organize_time": last_time_str,
-            "days_since": None,
+            "days_since": days_since,
             "message": None
         }
 

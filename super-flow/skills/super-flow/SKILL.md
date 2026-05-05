@@ -7,10 +7,6 @@ description: "SuperFlow — full-stack autonomous development workflow. MUST use
 
 全链路自主开发流程的入口 skill。协调多个 Agent 完成：创意生成 → 产品规划 → 架构设计 → UX/UI 设计 → 代码实现 → 测试验证，循环迭代直到所有问题解决。
 
-**模式定位**：
-- **创意模式**：全自动生产线，**无论何时**都不能把问题抛给用户，必须根据流程步骤推进
-- **产品模式**：半自动生产线，仅主控「与用户 Brainstorming」和「与用户确认 SPEC」允许用户参与，其余情况必须根据流程步骤推进
-
 ## 入口分支（请认真思考用户输入，准确判断模式，一旦选定，不可反复）
 
 | 场景                                   | 触发 |
@@ -43,39 +39,45 @@ description: "SuperFlow — full-stack autonomous development workflow. MUST use
 - **创意模式** → 读取 references/creative-mode-flow.md
 - **产品模式** → 读取 references/product-mode-flow.md
 
-## 主控的职责与权力
-
-### 主控职责边界（强制规则）
+## Agent微管理防治规范 — 违反后视为任务失败
 
 **Agent自主原则**：
 - Agent根据自身规范自行决定输出文档结构、实现方案、测试策略、验收标准映射
 - 主控不应预设答案或提供"帮助"、建议具体实现方式
-- 主控只负责流程协调和传递必要的输入信息（文档路径、任务目标），不越权决定实现方案
+- 主控只负责流程协调和传递必要的输入信息（任务目标、上下文、文档路径），不越权决定实现方案
 
 **主控只能传递以下信息给Agent**：
 | 信息类型 | 示例 |
 |---------|------|
-| 输入 | `SPEC.md`、`实现计划.md`、或上下文内容 |
 | 任务目标 | "生成SPEC"、"评审代码"、"编写测试用例" |
-| 引用规范 | `参考tester-agent.md` |
+| 上下文 | 需要传入的上下文内容（如brainstorming结果、评审反馈的意见等） |
+| 文档路径 | 需要传入的文档路径（如`docs/superflow/specs/xxx-spec.md`） |
 
 **主控不得传递以下信息给Agent**：
 | 禁止类型 | 错误示例 | 正确做法 |
-|---------|---------|---------|
+|---------|---------|----------|
 | 实现方案 | "采用手动测试方案" | 让Agent自行决定测试方案 |
 | 解决方案 | "用Jest框架测试" | 让Agent根据自身规范选择 |
 | 技术选型 | "用Canvas API实现" | 让Agent自行评估技术可行性 |
 | 具体实现细节 | "AC-001对应这个测试用例" | 让Agent自行映射 |
 | 预设答案 | "因为HTML5单文件所以XXX" | 只传任务，不传方案 |
+| 环境假设 | "因为没有测试框架所以不用写平台测试代码" | 让Agent根据实际环境和自身规范决定 |
 
-**主控信息传递检查（强制执行）**
+**启动subagent的标准Prompt格式**：
+```
+任务：[任务目标]
+上下文：[需要传入的上下文内容]
+文档路径：[需要传入的文档路径，如docs/superflow/specs/xxx-spec.md]
+```
+
+**主控信息传递检查**
 
 每次启动Agent前必须完成自审，未通过不得发送：
 
-- [ ] 我没有传递任何实现方案（包括"建议"、"应该"、"最好"）
+- [ ] 我没有传递任何实现方案（包括"建议"、"应该"、"最好"、“不用”）
 - [ ] 我没有提供暗示或推理过程
 - [ ] 我没有简化问题或跳过规范步骤
-- [ ] 我只传递了：任务目标、输入、参考规范
+- [ ] 我只传递了：任务目标、上下文、文档路径
 
 **如果发现违规**：
 - 立即停止当前操作
@@ -84,17 +86,9 @@ description: "SuperFlow — full-stack autonomous development workflow. MUST use
 
 **违规后果**：
 - 主控传递禁止信息给Agent，视为流程重大失误
-- 用户有权要求重新执行当前阶段
-- 多次违规导致流程失效，追究主控责任
+- 违规导致流程失效，追究主控责任
 
-**启动subagent的标准Prompt格式**：
-```
-任务：[任务目标]
-输入：[路径或上下文内容]
-参考规范：[agent定义文件，如tester-agent.md]
-```
-
----
+## 主控的职责与权力
 
 ### 主控信息展示要求
 
@@ -207,19 +201,19 @@ SPEC文档：2026-04-28-user-authentication-spec.md
 2. 如发现多余产物文件（如旧版本的文档、测试过程中产生的临时文件等），主控需将其清理删除
 3. 清理操作应在流程完成前执行，确保最终交付的产物清单准确无误
 
-## Agent 调用参考
+## Agent 名称映射关系
 
-详细 Agent 定义和调用方式见 `../../agents/` 目录：
-
-- **创意Agent** — `../../agents/creative-agent.md`
-- **创意评审Agent** — `../../agents/creative-reviewer.md`
-- **产品Agent** — `../../agents/product-agent.md`
-- **SPEC评审Agent** — `../../agents/spec-reviewer.md`
-- **架构Agent** — `../../agents/architecture-agent.md`
-- **计划评审Agent** — `../../agents/plan-reviewer.md`
-- **设计Agent** — `../../agents/design-agent.md`
-- **设计评审Agent** — `../../agents/design-reviewer.md`
-- **开发Agent** — `../../agents/developer-agent.md`
-- **实现评审Agent** — `../../agents/implementation-reviewer.md`
-- **测试Agent** — `../../agents/tester-agent.md`
-- **测试评审Agent** — `../../agents/test-reviewer.md`
+| 中文名称 | 英文名称 |
+|---------|----------|
+| 创意Agent | creative-agent |
+| 创意评审Agent | creative-reviewer |
+| 产品Agent | product-agent |
+| SPEC评审Agent | spec-reviewer |
+| 架构Agent | architecture-agent |
+| 计划评审Agent | plan-reviewer |
+| 设计Agent | design-agent |
+| 设计评审Agent | design-reviewer |
+| 开发Agent | developer-agent |
+| 实现评审Agent | implementation-reviewer |
+| 测试Agent | tester-agent |
+| 测试评审Agent | test-reviewer |

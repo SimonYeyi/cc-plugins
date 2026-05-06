@@ -83,9 +83,9 @@ description: |
 
 ---
 
-## Agent与Reviewer同步修改原则
+## 业务Agent与Reviewer同步修改原则
 
-**核心规则**：修改主干Agent时，必须同步更新对应的评审Agent
+**核心规则**：修改业务Agent时，必须同步更新对应的评审Agent
 
 **对应关系**：Product↔SPEC Reviewer, Design↔Design Reviewer, Architecture↔Plan Reviewer, Developer↔Implementation Reviewer, Tester↔Test Reviewer, Creative↔Creative Reviewer
 
@@ -104,7 +104,7 @@ Tester Agent增加"强制自动执行测试"要求
 
 ---
 
-## 测试职责专属原则
+## 测试Agent职责专属原则
 
 **核心规则**：测试相关工作（框架集成、代码编写、执行验证）全部由Tester Agent负责，Architecture和Developer不涉及任何测试工作。
 

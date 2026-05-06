@@ -59,24 +59,25 @@ SuperFlow 是一个基于 Claude Code 的开发框架，将软件开发拆解为
 
 ## 产出物
 
-所有文档统一存放在 `docs/superflow/` 目录下：
+所有文档统一存放在 `docs/superflow/{feature-name}/` 目录下：
 
 ```
 docs/superflow/
-├── creatives/              # 创意文档（仅创意模式）
-│   └── YYYY-MM-DD-feature-name-creative.md
-├── specs/                  # 产品规格文档
-│   ├── YYYY-MM-DD-feature-name-spec.md
-│   └── YYYY-MM-DD-feature-name-user-guide.md   # 用户指南
-├── plans/                  # 实现计划
-│   └── YYYY-MM-DD-feature-name-plan.md
-├── designs/                # UX/UI 设计文档
-│   └── YYYY-MM-DD-feature-name-design.md
-└── tests/                  # 测试相关
-    ├── YYYY-MM-DD-feature-name-unit-tests.md       # 单元测试用例
-    ├── YYYY-MM-DD-feature-name-platform-tests.md   # 平台测试用例
-    ├── YYYY-MM-DD-feature-name-acceptance-tests.md # 验收测试用例
-    └── YYYY-MM-DD-feature-name-test-report.md      # 测试报告
+└── {feature-name}/              # 功能根目录（以SPEC的feature-name为基准）
+    ├── creative/                # 创意文档（仅创意模式）
+    │   └── YYYY-MM-DD-creative.md
+    ├── spec/                    # 产品文档
+    │   ├── YYYY-MM-DD-spec.md         # SPEC文档
+    │   └── YYYY-MM-DD-user-guide.md   # 用户指南
+    ├── design/                  # 设计文档
+    │   └── YYYY-MM-DD-design.md
+    ├── plan/                    # 架构文档
+    │   └── YYYY-MM-DD-plan.md
+    └── test/                    # 测试文档
+        ├── YYYY-MM-DD-unit-tests.md       # 单元测试用例
+        ├── YYYY-MM-DD-platform-tests.md   # 平台测试用例
+        ├── YYYY-MM-DD-acceptance-tests.md # 验收测试用例
+        └── YYYY-MM-DD-test-report.md      # 测试报告
 ```
 
 ## 深入了解

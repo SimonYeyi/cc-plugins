@@ -160,17 +160,17 @@ description: "SuperFlow — full-stack autonomous development workflow. You MUST
 
 ```
 docs/superflow/
-└── {feature-name}/              # 功能根目录（以SPEC的feature-name为准）
-    ├── spec/                    # SPEC文档
+└── {feature-name}/              # 功能根目录（以SPEC的feature-name为基准）
+    ├── creative/                # 创意文档（仅创意模式）
+    │   └── YYYY-MM-DD-creative.md
+    ├── spec/                    # 产品文档
     │   ├── YYYY-MM-DD-spec.md         # SPEC文档
     │   └── YYYY-MM-DD-user-guide.md   # 用户指南
-    ├── plan/                    # 实现计划
-    │   └── YYYY-MM-DD-plan.md
-    ├── design/                  # UX/UI 设计文档
+    ├── design/                  # 设计文档
     │   └── YYYY-MM-DD-design.md
-    ├── creative/                # 创意文档
-    │   └── YYYY-MM-DD-creative.md
-    └── test/                    # 测试用例
+    ├── plan/                    # 架构文档
+    │   └── YYYY-MM-DD-plan.md
+    └── test/                    # 测试文档
         ├── YYYY-MM-DD-unit-tests.md       # 单元测试用例
         ├── YYYY-MM-DD-platform-tests.md   # 平台测试用例
         ├── YYYY-MM-DD-acceptance-tests.md # 验收测试用例
@@ -185,13 +185,15 @@ docs/superflow/
 ```
 docs/superflow/
 └── user-authentication/          # feature-name = "user-authentication"
+    ├── creative/
+    │   └── 2026-04-28-creative.md
     ├── spec/
     │   ├── 2026-04-28-spec.md
     │   └── 2026-04-28-user-guide.md
-    ├── plan/
-    │   └── 2026-04-28-plan.md
     ├── design/
     │   └── 2026-04-28-design.md
+    ├── plan/
+    │   └── 2026-04-28-plan.md
     └── test/
         ├── 2026-04-28-unit-tests.md
         └── 2026-04-28-test-report.md

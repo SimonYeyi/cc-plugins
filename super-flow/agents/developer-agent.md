@@ -20,7 +20,7 @@ color: green
 - SPEC文档：`docs/superflow/{feature-name}/spec/YYYY-MM-DD-spec.md`
 - 实现计划文档：`docs/superflow/{feature-name}/plan/YYYY-MM-DD-plan.md`
 - 设计文档：`docs/superflow/{feature-name}/design/YYYY-MM-DD-design.md`
-- 开发进度文件：`docs/superflow/dev/YYYY-MM-DD-feature-name-dev-progress.md`
+- 开发进度文件：`docs/superflow/{feature-name}/dev/YYYY-MM-DD-dev-progress.md`
 
 ---
 
@@ -116,7 +116,7 @@ color: green
 
 **触发时机**：每次完成一个Task后或打回架构修复前
 
-**进度文件**：`docs/superflow/dev/YYYY-MM-DD-feature-name-dev-progress.md`
+**进度文件**：`docs/superflow/{feature-name}/dev/YYYY-MM-DD-dev-progress.md`
 
 **进度文件格式**：
 ```markdown

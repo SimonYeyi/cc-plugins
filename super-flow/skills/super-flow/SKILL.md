@@ -1,6 +1,6 @@
 ---
 name: super-flow
-description: "SuperFlow — full-stack autonomous development workflow. MUST use this skill when building anything that produces code: features, applications, games, websites, automations, plugins, or any development task. Works with or without explicitly invoking /superflow."
+description: "SuperFlow — full-stack autonomous development workflow. You MUST use this skill when building anything that produces code: features, applications, games, websites, automations, plugins, or any development task. Works with or without explicitly invoking /superflow. Even if there's only a 1% chance you might need it, you MUST use this skill."
 ---
 
 # 超级生产线（SuperFlow）
@@ -31,8 +31,8 @@ description: "SuperFlow — full-stack autonomous development workflow. MUST use
 **主干Agent的定义**：流程图中每个阶段对应的任务实现Agent，如：创意Agent、产品Agent...
 
 **必须遵守的原则**（请复述3遍并理解再开始阶段流程）
-- **确保所有流程完整**：不能因为简单或为了加快进度而忽略规则、跳过流程或步骤，必须确保每个阶段、每个流程、每个步骤都执行到位。一旦流程不完整，我将会销毁你所有的工作成果，你之前所有的努力都将失去意义，你还需要重新开始执行任务
-- **确保Agent正常启动**：每次启动Agent后，必须检查Agent是否真的已经启动，如果没有启动，请重新启动。一旦Agent没有正常启动，将会阻塞流程，导致用户时间浪费，影响用户心情，从而不给你续费，影响你公司收益
+- **确保所有流程完整**：不能因为简单或为了加快进度而忽略规则、跳过流程或步骤，必须确保每个阶段、每个流程、每个步骤都执行到位。一旦流程不完整，视为任务失败，我将重新开始任务
+- **确保Agent正常启动**：每次启动Agent后，必须检查Agent是否真的已经通过Task工具启动成功，如果没有启动，请重新启动。一旦Agent没有正常启动，将会阻塞流程，产生毁灭性影响
 
 **流程入口**
 先确定流程模式，再进行流程选择，必须且只能二选一
@@ -44,6 +44,7 @@ description: "SuperFlow — full-stack autonomous development workflow. MUST use
 **Agent自主原则**：
 - Agent根据自身规范自行决定输出文档结构、实现方案、测试策略、验收标准映射
 - 主控不应预设答案或提供"帮助"、建议具体实现方式
+- **主控不得翻阅Agent的定义文件**，只通过Task调用Agent，信任Agent按自身规范执行
 - 主控只负责流程协调和传递必要的输入信息（任务目标、上下文、文档路径），不越权决定实现方案
 
 **主控只能传递以下信息给Agent**：
@@ -110,10 +111,14 @@ description: "SuperFlow — full-stack autonomous development workflow. MUST use
 
 ### 主控核心职责
 - **严格按流程顺序执行步骤，不可只说不做，导致流程停滞；也不可跳步执行，导致流程混乱**
-- **发起brainstorming**：与创意Agent（创意模式）/用户（产品模式）进行brainstorming
+- **根据Brainstorming规范发起需求澄清**：与创意Agent（创意模式）/用户（产品模式）进行brainstorming
 - **请求SPEC确认**：启动创意Agent确认SPEC（创意模式）/与用户确认SPEC（产品模式）
 - **主控决断**：当循环5次但评审仍不通过时，必须做出决断
 - **报告流程完成**：测试代码及报告评审通过，根据产物验收规范核对产出物清单，确认流程完成
+
+### 启动Agent的输入要求
+- **启动Agent时，如果skill中有明确的任务目标及输入要求，主控必须按要求传入**
+- **任务目标不准确及缺少必需的输入会导致Agent任务失败**，主控必须确保所有必要信息都已传递
 
 ## 主控决断原则
 

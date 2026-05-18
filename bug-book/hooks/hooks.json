@@ -10,10 +10,9 @@
             "tool": "recall_for_hook",
             "input": {
               "file_path": "${tool_input.file_path}",
-              "transcript_path": "${event.transcript_path}",
+              "transcript_path": "${transcript_path}",
               "limit": 10
-            },
-            "additionalContext": true
+            }
           }
         ]
       },
@@ -27,8 +26,7 @@
             "tool": "migrate_path_for_hook",
             "input": {
               "command": "${tool_input.command}"
-            },
-            "additionalContext": true
+            }
           }
         ]
       }
@@ -38,8 +36,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python \"${CLAUDE_PLUGIN_ROOT}/scripts/organize_reminder.py\"",
-            "timeout": 1000
+            "command": "python \"${CLAUDE_PLUGIN_ROOT}/scripts/organize_reminder.py\""
           }
         ]
       }

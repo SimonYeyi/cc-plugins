@@ -605,28 +605,6 @@ AC-DX-003: 给定 CLI 命令缺少必填参数，
 - **Fallback策略**：无法识别时的默认响应
 - **Rich Response**：卡片、列表、快速回复等富媒体响应
 
-**示例（Claude Code Plugin YAML）**：
-```yaml
-name: bug-search
-description: Search for bugs in the database
-triggers:
-  - "search bug"
-  - "find issue"
-  - "lookup defect"
-permissions:
-  - file:read  # 读取配置文件
-  - env:read   # 读取数据库连接信息
-parameters:
-  - name: keyword
-    type: string
-    required: true
-    description: Search keyword
-  - name: status
-    type: enum
-    options: [open, closed, all]
-    default: open
-```
-
 ### 21. 分布式系统设计规范（微服务/Webhook/事件驱动）
 
 **适用场景**：微服务架构、Webhook系统、Event-driven架构、消息队列等。

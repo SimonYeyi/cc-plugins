@@ -22,12 +22,11 @@ from path_utils import normalize_path, match_path
 # ---------------------------------------------------------------------------
 # 配置
 # ---------------------------------------------------------------------------
-PROJECT_ROOT = find_project_root()
 DATA_DIR = get_data_dir()
 BUGS_FILE = DATA_DIR / "bug-book.jsonl"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-# 权重配置（与 SQLite 保持一致）
+# 权重配置
 _WEIGHT_DIMENSIONS = frozenset({
     "importance", "complexity", "scope", "difficulty",
     "occurrences", "emotion", "prevention",
@@ -301,7 +300,7 @@ class JSONLBackend(BugStorageBackend):
         self._ensure_loaded()
         bug = self._bugs.get(bug_id)
         if not bug:
-            # Bug 不存在时静默返回，与 SQLite 行为一致
+            # Bug 不存在时静默返回
             return
         
         # 自动同步逻辑
@@ -758,7 +757,7 @@ class JSONLBackend(BugStorageBackend):
         self._ensure_loaded()
         bug = self._bugs.get(bug_id)
         if not bug:
-            # Bug 不存在时静默返回，与 SQLite 行为一致
+            # Bug 不存在时静默返回
             return
         
         if reason:
@@ -795,7 +794,7 @@ class JSONLBackend(BugStorageBackend):
         return result_list
     
     def check_path_valid(self, path: str, root: Optional[Path] = None) -> bool:
-        root = root or PROJECT_ROOT
+        root = root or find_project_root()
         if path.endswith("/*"):
             # 通配符路径：去掉 /* 检查目录是否存在
             abs_path = root / path[:-2]

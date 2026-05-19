@@ -57,7 +57,6 @@ def run_mcp_test(storage_type: str, temp_dir: str):
 
     # 启动 MCP Server 子进程
     env = os.environ.copy()
-    env['BUG_BOOK_STORAGE'] = storage_type
 
     # Windows 下需要特殊处理
     creationflags = 0
@@ -333,12 +332,6 @@ def main():
     transcript_path, temp_dir = prepare_test_data()
     print(f"✓ 测试目录: {temp_dir}")
 
-    # 测试 SQLite 后端
-    sqlite_errors = run_mcp_test("sqlite", temp_dir)
-
-    # 重置 transcript（每个后端测试独立）
-    transcript_path, temp_dir = prepare_test_data()
-
     # 测试 JSONL 后端
     jsonl_errors = run_mcp_test("jsonl", temp_dir)
     
@@ -346,22 +339,16 @@ def main():
     print(f"\n{'='*60}")
     print("测试总结")
     print('='*60)
-    print(f"SQLite 后端: {len(sqlite_errors)} 个错误")
     print(f"JSONL 后端: {len(jsonl_errors)} 个错误")
-    
-    if sqlite_errors:
-        print("\nSQLite 错误详情:")
-        for name, error in sqlite_errors:
-            print(f"  - {name}: {error}")
     
     if jsonl_errors:
         print("\nJSONL 错误详情:")
         for name, error in jsonl_errors:
             print(f"  - {name}: {error}")
     
-    total_errors = len(sqlite_errors) + len(jsonl_errors)
+    total_errors = len(jsonl_errors)
     if total_errors == 0:
-        print("\n✓ 所有测试通过！MCP Server 双后端完全兼容")
+        print("\n✓ 所有测试通过！MCP Server 完全兼容")
     else:
         print(f"\n✗ 共 {total_errors} 个错误需要修复")
     

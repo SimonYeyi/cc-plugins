@@ -10,7 +10,7 @@ from datetime import datetime
 # 导入工厂和接口
 from backend_factory import create_backend
 from storage_backend import BugStorageBackend
-from jsonl.jsonl_backend import PROJECT_ROOT
+from config import find_project_root
 
 
 # ---------------------------------------------------------------------------

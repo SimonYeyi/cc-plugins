@@ -180,7 +180,6 @@ python -m pytest tests/test_metadata_store.py -v -k "organize or reminder"
 ### 测试隔离策略
 
 - **临时目录**: 使用 `tempfile.mkdtemp()` 创建隔离的测试环境
-- **环境变量**: 通过 `CLAUDE_PLUGIN_DATA` 和 `BUG_BOOK_STORAGE` 控制测试配置
 - **模块缓存清除**: 使用 `del sys.modules[...]` 强制重新导入
 - **数据清理**: 每次测试前清理数据库/文件
 

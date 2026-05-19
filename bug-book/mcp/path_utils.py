@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""路径匹配辅助函数 - 供 SQLite 和 JSONL 后端共用"""
+"""路径匹配辅助函数 - 供 JSONL 后端共用"""
 
 from pathlib import Path
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bug-book 双后端单元测试 - 通过依赖注入测试 SQLite 和 JSONL 后端"""
+"""Bug-book JSONL 后端单元测试"""
 
 import os
 import sys
@@ -25,58 +25,27 @@ DEFAULT_SCORES = {
 }
 
 
-@pytest.fixture(params=['sqlite', 'jsonl'])
-def backend(request):
-    """创建后端实例（参数化：sqlite 或 jsonl）"""
-    backend_type = request.param
-    os.environ['BUG_BOOK_STORAGE'] = backend_type
-
+@pytest.fixture
+def backend():
+    """创建 JSONL 后端实例"""
     # 清除模块缓存（包括 config 等所有 mcp 模块）
-    modules_to_clear = [m for m in list(sys.modules.keys()) if m.startswith(('mcp.', 'backend_factory', 'sqlite_backend', 'jsonl_backend', 'config', 'storage_backend', 'path_utils'))]
+    modules_to_clear = [m for m in list(sys.modules.keys()) if m.startswith(('mcp.', 'backend_factory', 'jsonl_backend', 'config', 'storage_backend', 'path_utils'))]
     for mod in modules_to_clear:
         del sys.modules[mod]
 
-    # 清理数据库/文件
+    # 清理 JSONL 文件
     from config import get_data_dir
     data_dir = get_data_dir()
-    db_path = data_dir / "bug-book.db"
     jsonl_path = data_dir / "bug-book.jsonl"
 
-    # 删除 JSONL 文件
     try:
         if jsonl_path.exists():
             jsonl_path.unlink()
     except OSError:
         pass
 
-    # SQLite：删除 WAL 日志并清空表
-    if backend_type == 'sqlite' and db_path.exists():
-        import sqlite3
-        try:
-            conn = sqlite3.connect(str(db_path), timeout=1.0, isolation_level='EXCLUSIVE')
-            conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-            conn.execute("DELETE FROM bug_impacts")
-            conn.execute("DELETE FROM bug_recalls")
-            conn.execute("DELETE FROM bug_keywords")
-            conn.execute("DELETE FROM bug_tags")
-            conn.execute("DELETE FROM bug_paths")
-            conn.execute("DELETE FROM bug_scores")
-            conn.execute("DELETE FROM bugs")
-            conn.commit()
-            conn.close()
-        except Exception:
-            pass
-
-        # 删除 WAL 文件
-        for f in [str(db_path) + "-journal", str(db_path) + "-wal", str(db_path) + "-shm"]:
-            try:
-                if os.path.exists(f):
-                    os.remove(f)
-            except OSError:
-                pass
-
     # 通过工厂创建后端实例
-    instance = create_backend(backend_type)
+    instance = create_backend()
     return instance
 
 
@@ -613,29 +582,18 @@ def test_mark_invalid_nonexistent(backend):
 # ============================================================
 
 def test_lazy_init(backend):
-    """TC-L01: 数据库/文件不存在时自动创建"""
+    """TC-L01: 文件不存在时自动创建"""
     from config import get_data_dir
     data_dir = get_data_dir()
+    jsonl_path = data_dir / "bug-book.jsonl"
     
-    # 根据后端类型检查不同的文件
-    storage_type = os.environ.get('BUG_BOOK_STORAGE', 'sqlite')
-    if storage_type == 'sqlite':
-        db_path = data_dir / "bug-book.db"
-        for f in [str(db_path), str(db_path) + "-journal", str(db_path) + "-wal", str(db_path) + "-shm"]:
-            try:
-                os.remove(f)
-            except OSError:
-                pass
-        backend.add_bug(title="懒初始化", phenomenon="", verified=True)
-        assert db_path.exists()
-    else:  # jsonl
-        jsonl_path = data_dir / "bug-book.jsonl"
-        try:
-            os.remove(str(jsonl_path))
-        except OSError:
-            pass
-        backend.add_bug(title="懒初始化", phenomenon="", verified=True)
-        assert jsonl_path.exists()
+    try:
+        os.remove(str(jsonl_path))
+    except OSError:
+        pass
+    
+    backend.add_bug(title="懒初始化", phenomenon="", verified=True)
+    assert jsonl_path.exists()
 
 
 def test_full_crud(backend):
@@ -914,21 +872,9 @@ def test_recall_by_path_with_recall_pattern(backend):
 def test_migrate_paths_exact_match(backend):
     """TC-O01: 迁移 paths 中的精确匹配"""
     # 清理数据
-    from config import get_data_dir
-    import sqlite3
-    
-    storage_type = os.environ.get('BUG_BOOK_STORAGE', 'sqlite')
-    if storage_type == 'sqlite':
-        db_path = get_data_dir() / "bug-book.db"
-        conn = sqlite3.connect(str(db_path))
-        conn.execute("DELETE FROM bug_impacts")
-        conn.execute("DELETE FROM bugs")
-        conn.commit()
-        conn.close()
-    else:  # jsonl
-        existing_bugs = backend.list_bugs(limit=1000)
-        for bug in existing_bugs:
-            backend.delete_bug(bug["id"])
+    existing_bugs = backend.list_bugs(limit=1000)
+    for bug in existing_bugs:
+        backend.delete_bug(bug["id"])
     
     # 创建 Bug #1：paths=["src/auth/session.ts"]
     bug_id, _ = backend.add_bug(

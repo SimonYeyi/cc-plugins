@@ -20,11 +20,3 @@ node_modules/
 # Python
 __pycache__/
 *.pyc
-
-# Bug-book
-bug-book/bug-book-data/*.db
-bug-book/bug-book-data/*.db-journal
-bug-book/bug-book-data/*.db-wal
-bug-book/bug-book-data/*.db-shm
-bug-book/bug-book-data/*.lock
-bug-book/tests/test_transcript*.json

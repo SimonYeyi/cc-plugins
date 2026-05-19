@@ -5,10 +5,10 @@
 | Skill | 文件位置 | 职责 |
 |-------|----------|------|
 | `bug-record` | `skills/bug-record/SKILL.md` | 记录问题到数据库，包括现象、根因、解决方案、评分等 |
-| `bug-search` | `skills/bug-search/SKILL.md` | 搜索和召回历史问题，支持关键词、标签、路径匹配 |
-| `bug-organize` | `skills/bug-organize/SKILL.md` | 整理错题集：清理失效条目、归类相似问题、路径迁移 |
 
 修改 Skill 时，在对应的 SKILL.md 文件中实现逻辑。
+
+**MCP Server 提供**：搜索、召回、整理功能（`mcp/mcp_server.py`）
 
 ## 开发规范
 
@@ -38,8 +38,6 @@
 
 4. **最后**：更新相关 Skill 文档中的 API 调用说明或示例
    - `skills/bug-record/SKILL.md` - Bug 记录相关 API
-   - `skills/bug-search/SKILL.md` - 搜索和召回相关 API
-   - `skills/bug-organize/SKILL.md` - 整理和优化相关 API
 
 **重要原则**：
 - 文档和代码必须一一对应，每个用例编号在两侧保持一致

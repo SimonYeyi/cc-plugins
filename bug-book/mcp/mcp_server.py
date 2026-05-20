@@ -248,21 +248,22 @@ class MCPServer:
         try:
             result = self._call(tool_name, arguments)
 
-            # 后端已返回 MCP 标准格式（含 content），直接返回
+            # Hook 工具已返回 MCP 格式，直接返回
             if isinstance(result, dict) and 'content' in result:
                 return result
 
-            # 普通工具：JSON 序列化
+            # 普通工具统一封装为 MCP 标准格式
             return {'content': [{'type': 'text', 'text': json.dumps(result, ensure_ascii=False)}]}
         except Exception as e:
-            return {'content': [{'type': 'text', 'text': f'Error: {str(e)}'}], 'isError': True}
+            # 后端异常统一转换为 MCP 错误格式
+            return {'content': [{'type': 'text', 'text': str(e)}], 'isError': True}
 
     def _call(self, tool_name: str, args):
         """实际调用函数（通过后端实例）"""
         functions = {
             'save_bugs': lambda: self.backend.save_bugs(args),  # 直接传数组
             'search_bugs': lambda: self.backend.search_bugs(**args),
-            'organize_bugs': lambda: self._handle_organize_bugs(),
+            'organize_bugs': lambda: self.backend.organize_bugs(),
             'get_bug_detail': lambda: self.backend.get_bug_detail(args['bug_id']),
             'recall_for_hook': lambda: self._handle_recall_for_hook(args['file_path'], args['transcript_path'], args.get('limit', 10)),
             'migrate_path_for_hook': lambda: self._handle_migrate_path_for_hook(args['command']),
@@ -274,11 +275,11 @@ class MCPServer:
 
         return func()
 
-    def _handle_recall_for_hook(self, file_path: str, transcript_path: str, limit: int):
+    def _handle_recall_for_hook(self, file_path: str, transcript_path: str, limit: int = 10):
         """为Hook返回hookSpecificOutput格式"""
         # 将绝对路径转换为相对路径
         abs_file = Path(file_path).resolve()
-        rel_file = str(abs_file.relative_to(PROJECT_ROOT))
+        rel_file = str(abs_file.relative_to(find_project_root()))
 
         # 1. 检查是否在最近 10 轮内已召回
         if self._has_recent_recall(transcript_path, rel_file, lookback=10):
@@ -286,13 +287,18 @@ class MCPServer:
                 "content": [{"type": "text", "text": json.dumps({
                     "hookSpecificOutput": {
                         "hookEventName": "PostToolUse",
-                        "additionalContext": ""
+                        "additionalContext": "最近对话中已召回过该文件相关 Bug，请参考历史 Bug 信息，防止产生回归问题"
                     }
                 }, ensure_ascii=False)}]
             }
 
         # 2. 调用后端召回（使用相对路径）
         related_bugs = self.backend.recall_by_path(rel_file, limit=limit)
+
+        if not related_bugs:
+            return {
+                "content": [{"type": "text", "text": rel_file + " 文件下还没出现过 Bug" }]
+            }
 
         recall_tag = "已召回 " + str(len(related_bugs)) + " 个相关 bug [recall " + rel_file + "]"
         return {
@@ -385,87 +391,6 @@ class MCPServer:
             }, ensure_ascii=False)}]
         }
 
-    def _handle_organize_bugs(self):
-        """整理错题集"""
-        from metadata_store import metadata_store
-        
-        report_lines = []
-        report_lines.append("# 📋 Bug-Book 整理报告\n")
-        
-        # === 第1步：压缩文件 ===
-        removed_count = self.backend.compact_file()
-        report_lines.append(f"## ✅ 第1步：文件压缩\n")
-        report_lines.append(f"- 清理了 {removed_count} 条旧记录\n\n")
-
-        # === 第2步：检查路径有效性 ===
-        # 检查所有非 invalid 的 bug（active + resolved）
-        active_bugs = self.backend.list_bugs(status="active", limit=99999)
-        resolved_bugs = self.backend.list_bugs(status="resolved", limit=99999)
-        all_bugs = active_bugs + resolved_bugs
-        
-        invalid_path_bugs = []
-        for bug in all_bugs:
-            invalid_paths = self.backend.check_bug_paths(bug['id'])
-            if invalid_paths:
-                invalid_path_bugs.append({
-                    'id': bug['id'],
-                    'title': bug['title'],
-                    'status': bug.get('status', 'active'),
-                    'invalid_paths': invalid_paths
-                })
-        
-        report_lines.append(f"## 🔍 第2步：路径有效性检查\n")
-        if invalid_path_bugs:
-            active_invalid = [b for b in invalid_path_bugs if b['status'] == 'active']
-            resolved_invalid = [b for b in invalid_path_bugs if b['status'] == 'resolved']
-            
-            report_lines.append(f"发现 {len(invalid_path_bugs)} 个 bug 有无效路径：\n")
-            report_lines.append(f"- 活跃 (active): {len(active_invalid)}\n")
-            report_lines.append(f"- 已解决 (resolved): {len(resolved_invalid)}\n\n")
-            
-            for item in invalid_path_bugs:  # 全量展示
-                paths_str = ', '.join([f'`{p}`' for p in item['invalid_paths']])
-                status_tag = "🔴" if item['status'] == 'active' else "🟢"
-                report_lines.append(
-                    f"- {status_tag} **Bug #{item['id']}** [{item['status']}]: {item['title']}\n"
-                    f"  - 无效路径: {paths_str}\n"
-                )
-            report_lines.append("\n💡 建议：标记这些 bug 为失效，或更新路径。\n\n")
-        else:
-            report_lines.append("✅ 所有路径均有效\n\n")
-        
-        # === 第3步：检查长期未验证记录 ===
-        unverified_old = self.backend.list_unverified_old(days=30, limit=99999)  # 不限制，返回所有
-        report_lines.append(f"## ⏳ 第3步：长期未验证记录（超过30天）\n")
-        if unverified_old:
-            report_lines.append(f"发现 {len(unverified_old)} 条长期未验证记录：\n")
-            for bug in unverified_old:  # 全量展示
-                report_lines.append(
-                    f"- **Bug #{bug['id']}**: {bug['title']} - "
-                    f"创建于 {bug['created_at'][:10]}（{bug.get('score', 0):.1f}分）\n"
-                )
-            report_lines.append("\n💡 建议：确认是否已修复？如已修复请验证，如功能已废弃请标记失效。\n\n")
-        else:
-            report_lines.append("✅ 没有长期未验证的记录\n\n")
-        
-        # === 第4步：数据库统计 ===
-        total_count = self.backend.count_bugs()
-        
-        report_lines.append(f"## 📈 第4步：数据库统计\n")
-        report_lines.append(f"- 总记录数: {total_count}\n")
-        report_lines.append(f"- 活跃 (active): {len(active_bugs)}\n")
-        report_lines.append(f"- 已解决 (resolved): {len(resolved_bugs)}\n\n")
-        
-        # === 设置最后整理时间 ===
-        metadata_store.set_last_organize_time()
-        report_lines.append("---\n")
-        report_lines.append(f"✅ 整理完成！最后整理时间已更新。\n")
-        
-        # 返回报告
-        full_report = ''.join(report_lines)
-        return {
-            "content": [{"type": "text", "text": full_report}]
-        }
 
 # ---------------------------------------------------------------------------
 # MCP Server 入口点（stdio 协议）

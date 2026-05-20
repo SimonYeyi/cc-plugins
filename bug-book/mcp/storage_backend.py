@@ -1,213 +1,14 @@
 #!/usr/bin/env python3
-"""Bug-book 存储后端抽象接口"""
+"""Bug-book 存储后端抽象接口 - 最小公共接口"""
 
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 
 
 class BugStorageBackend(ABC):
-    """Bug 存储后端抽象基类"""
+    """Bug 存储后端抽象基类 - 仅暴露6个公共方法"""
     
-    # -------------------- CRUD --------------------
-    
-    @abstractmethod
-    def add_bug(
-        self,
-        title: str,
-        phenomenon: str,
-        root_cause: Optional[str] = None,
-        solution: Optional[str] = None,
-        test_case: Optional[str] = None,
-        verified: bool = False,
-        scores: Optional[dict[str, float]] = None,
-        paths: Optional[list[str]] = None,
-        tags: Optional[list[str]] = None,
-        keywords: Optional[list[str]] = None,
-        module_patterns: Optional[list[str]] = None,
-    ) -> tuple[Any, float]:
-        """新增 bug，返回 (bug_id, score)"""
-        pass
-    
-    @abstractmethod
-    def update_bug(
-        self,
-        bug_id: Any,
-        title: Optional[str] = None,
-        phenomenon: Optional[str] = None,
-        root_cause: Optional[str] = None,
-        solution: Optional[str] = None,
-        test_case: Optional[str] = None,
-        status: Optional[str] = None,
-        verified: Optional[bool] = None,
-        verified_at: Optional[str] = None,
-        verified_by: Optional[str] = None,
-    ) -> None:
-        """更新 bug"""
-        pass
-    
-    @abstractmethod
-    def delete_bug(self, bug_id: Any) -> None:
-        """删除 bug（软删除）"""
-        pass
-    
-    @abstractmethod
-    def get_bug_detail(self, bug_id: Any) -> Optional[dict[str, Any]]:
-        """获取 bug 详情"""
-        pass
-    
-    @abstractmethod
-    def list_bugs(
-        self,
-        status: Optional[str] = None,
-        order_by: str = "score",
-        limit: int = 50,
-        offset: int = 0,
-    ) -> list[dict[str, Any]]:
-        """列出 bugs"""
-        pass
-    
-    @abstractmethod
-    def count_bugs(self) -> int:
-        """统计 bug 总数"""
-        pass
-    
-    # -------------------- 分数管理 --------------------
-    
-    @abstractmethod
-    def increment_score(
-        self,
-        bug_id: Any,
-        dimension: str = "occurrences",
-        delta: float = 1.0,
-    ) -> None:
-        """累加分数"""
-        pass
-    
-    # -------------------- 路径和模块模式管理 --------------------
-    
-    @abstractmethod
-    def update_bug_paths(self, bug_id: Any, new_paths: list[str]) -> None:
-        """批量更新路径"""
-        pass
-    
-    @abstractmethod
-    def update_bug_module_patterns(self, bug_id: Any, new_module_patterns: list[str]) -> None:
-        """批量更新模块模式"""
-        pass
-    
-    @abstractmethod
-    def add_module_pattern(self, bug_id: Any, pattern: str) -> None:
-        """添加模块模式"""
-        pass
-    
-    # -------------------- 搜索功能 --------------------
-    
-    @abstractmethod
-    def search_by_keyword(self, keyword: str, limit: int = 20) -> list[dict[str, Any]]:
-        """关键词搜索"""
-        pass
-    
-    @abstractmethod
-    def search_by_tag(self, tag: str, limit: int = 20) -> list[dict[str, Any]]:
-        """标签搜索"""
-        pass
-    
-    @abstractmethod
-    def search_recent(self, days: int = 7, limit: int = 20) -> list[dict[str, Any]]:
-        """搜索最近创建的"""
-        pass
-    
-    @abstractmethod
-    def search_high_score(
-        self, min_score: float = 30.0, limit: int = 20
-    ) -> list[dict[str, Any]]:
-        """搜索高分 bugs"""
-        pass
-    
-    @abstractmethod
-    def search_top_critical(self, limit: int = 20) -> list[dict[str, Any]]:
-        """搜索最严重的"""
-        pass
-    
-    @abstractmethod
-    def search_recent_unverified(
-        self, days: int = 7, limit: int = 20
-    ) -> list[dict[str, Any]]:
-        """搜索最近未验证的"""
-        pass
-    
-    @abstractmethod
-    def search_by_status_and_score(
-        self,
-        status: str = "active",
-        min_score: float = 0.0,
-        max_score: Optional[float] = None,
-        verified: Optional[bool] = None,
-        order_by: str = "score",
-        limit: int = 20,
-    ) -> list[dict[str, Any]]:
-        """组合搜索"""
-        pass
-    
-    # -------------------- 召回功能 --------------------
-    
-    @abstractmethod
-    def recall_by_path(self, file_path: str, limit: int = 10) -> list[dict[str, Any]]:
-        """按路径召回"""
-        pass
-    
-    @abstractmethod
-    def search_by_module_patterns(self, pattern: str, limit: int = 10) -> list[dict[str, Any]]:
-        """按模块模式搜索"""
-        pass
-
-    # -------------------- 影响关系 --------------------
-    
-    @abstractmethod
-    def add_impact(
-        self,
-        source_bug_id: Any,
-        solution_change: str,
-        impact_description: str,
-        impact_type: str = "regression",
-        severity: int = 5,
-        prevention_delta: float = 3.0,
-    ) -> Any:
-        """添加影响关系，返回 impact_id"""
-        pass
-    
-    @abstractmethod
-    def delete_impact(self, impact_id: Any, prevention_delta: float = 0) -> None:
-        """删除影响记录"""
-        pass
-    
-    # -------------------- 高级功能 --------------------
-    
-    @abstractmethod
-    def mark_invalid(self, bug_id: Any, reason: Optional[str] = None) -> None:
-        """标记为无效"""
-        pass
-    
-    @abstractmethod
-    def list_unverified_old(
-        self, days: int = 30, limit: int = 20
-    ) -> list[dict[str, Any]]:
-        """列出长期未验证的"""
-        pass
-    
-    @abstractmethod
-    def check_bug_paths(self, bug_id: Any) -> list[str]:
-        """检查 bug 的 paths/module_patterns/impacts 路径是否有效，返回无效路径列表"""
-        pass
-
-    @abstractmethod
-    def migrate_bug_paths_after_refactor(
-        self, old_path: str, new_path: str
-    ) -> tuple[list[Any], int]:
-        """迁移重构后的路径"""
-        pass
-    
-    # -------------------- 重构后的新接口 --------------------
+    # -------------------- 1. 统一保存 --------------------
     
     @abstractmethod
     def save_bugs(self, bugs_data) -> Any:
@@ -215,21 +16,61 @@ class BugStorageBackend(ABC):
         
         Args:
             bugs_data: 可以是单个 bug dict、数组或 {'bugs': [...]} 格式
+            
+        Returns:
+            保存结果数据（如 {'results': [...], 'count': N}），失败时抛出异常
         """
         pass
+    
+    # -------------------- 2. 统一搜索 --------------------
     
     @abstractmethod
     def search_bugs(self, **kwargs) -> dict[str, Any]:
-        """统一搜索接口（支持多种模式 + 分页）"""
-        pass
-    
-    @abstractmethod
-    def compact_file(self) -> int:
-        """压缩文件：移除已删除的记录，相同ID只保留最后一条
+        """统一搜索接口（支持多种模式 + 分页）
         
         Returns:
-            清理的记录数量（被移除的旧记录数）
+            搜索结果数据 {'bugs': [...], 'pagination': {...}}，失败时抛出异常
         """
         pass
+
+    # -------------------- 3. 整理 bug-book --------------------
+
+    @abstractmethod
+    def organize_bugs(self) -> dict[str, Any]:
+        """整理 bug-book，返回结构化数据供模型生成报告
+
+        Returns:
+            {
+                "invalid_candidates": [...],  # 待标记失效的bug
+                "unverified_old": [...],      # 长期未验证的bug
+                "statistics": {...},          # 统计信息
+                "last_organize_time": "...",  # 最后整理时间
+            }
+        """
+        pass
+    
+    # -------------------- 4. 获取详情 --------------------
+    
+    @abstractmethod
+    def get_bug_detail(self, bug_id: Any) -> Optional[dict[str, Any]]:
+        """获取 bug 详情"""
+        pass
+    
+    # -------------------- 5. 路径召回 --------------------
+    
+    @abstractmethod
+    def recall_by_path(self, file_path: str, limit: int = 10) -> list[dict[str, Any]]:
+        """按路径召回相关 bug（用于 hook）"""
+        pass
+    
+    # -------------------- 6. 路径迁移 --------------------
+    
+    @abstractmethod
+    def migrate_bug_paths_after_refactor(
+        self, old_path: str, new_path: str
+    ) -> list[int]:
+        """迁移重构后的路径，返回被迁移的 bug_id 列表"""
+        pass
+
     
 

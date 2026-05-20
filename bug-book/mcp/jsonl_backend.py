@@ -106,6 +106,239 @@ class JSONLBackend(BugStorageBackend):
         # 初始化数据
         self._ensure_loaded()
 
+    # =========================================================================
+    # 公共接口（6个）- 按 storage_backend.py 声明顺序
+    # =========================================================================
+    
+    def save_bugs(self, bugs_data) -> Any:
+        """统一保存接口（支持多种 mode，支持批量）"""
+        # 标准化输入：统一为数组格式
+        if isinstance(bugs_data, dict):
+            if 'bugs' in bugs_data:
+                bugs_list = bugs_data['bugs']
+            else:
+                # 单个 bug 操作（dict 格式）
+                bugs_list = [bugs_data]
+        elif isinstance(bugs_data, list):
+            bugs_list = bugs_data
+        else:
+            raise ValueError('无效的输入格式')
+
+        results = []
+        for bug_data in bugs_list:
+            result = self._save_bug(**bug_data)
+            results.append(result)
+
+        return {'results': results, 'count': len(results)}
+    
+    def search_bugs(self, **kwargs) -> dict[str, Any]:
+        """统一搜索接口（支持多种模式 + 分页）"""
+        mode = kwargs.get('mode')
+        limit = kwargs.get('limit', 20)
+        offset = kwargs.get('offset', 0)
+        
+        # 根据 mode 路由到不同的搜索方法
+        if mode == 'keyword':
+            bugs = self._search_by_keyword(kwargs['keyword'], limit=limit + offset)
+        elif mode == 'tag':
+            bugs = self._search_by_tag(kwargs['tag'], limit=limit + offset)
+        elif mode == 'recent':
+            bugs = self._search_recent(kwargs.get('days', 7), limit=limit + offset)
+        elif mode == 'high_score':
+            bugs = self._search_high_score(kwargs.get('min_score', 30.0), limit=limit + offset)
+        elif mode == 'critical':
+            bugs = self._search_top_critical(limit=limit + offset)
+        elif mode == 'unverified':
+            bugs = self._search_recent_unverified(kwargs.get('days', 7), limit=limit + offset)
+        elif mode == 'custom':
+            bugs = self._search_by_status_and_score(
+                status=kwargs.get('status', 'active'),
+                min_score=kwargs.get('min_score', 0.0),
+                max_score=kwargs.get('max_score'),
+                verified=kwargs.get('verified'),
+                order_by=kwargs.get('order_by', 'score'),
+                limit=limit + offset
+            )
+        elif mode == 'module':
+            bugs = self._search_by_module_patterns(kwargs['pattern'], limit=limit + offset)
+        else:
+            raise ValueError(f"Unknown search mode: {mode}")
+        
+        # 应用分页
+        total = len(bugs)
+        paginated_bugs = bugs[offset:offset + limit]
+        has_more = offset + limit < total
+        
+        return {
+            'bugs': paginated_bugs,
+            'pagination': {
+                'total': total,
+                'limit': limit,
+                'offset': offset,
+                'has_more': has_more
+            }
+        }
+    
+    def organize_bugs(self) -> dict[str, Any]:
+        """整理 bug-book，返回结构化数据供模型生成报告"""
+        from metadata_store import metadata_store
+        
+        self._ensure_loaded()
+        
+        # 1. 检查路径无效的 bug
+        invalid_candidates = []
+        for bug_id, bug in self._bugs.items():
+            if bug.get('status') == 'invalid':
+                continue
+            invalid_paths = self._check_bug_paths(bug_id)
+            if invalid_paths:
+                invalid_candidates.append({
+                    'id': bug_id,
+                    'title': bug.get('title', ''),
+                    'status': bug.get('status', 'active'),
+                    'invalid_paths': invalid_paths,
+                })
+        
+        # 2. 检查长期未验证的记录
+        unverified_old = self._list_unverified_old(days=30, limit=99999)
+        
+        # 3. 统计信息
+        total_count = self._count_bugs()
+        active_bugs = [b for b in self._bugs.values() if b.get('status') == 'active']
+        resolved_bugs = [b for b in self._bugs.values() if b.get('status') == 'resolved']
+        
+        statistics = {
+            'total': total_count,
+            'active': len(active_bugs),
+            'resolved': len(resolved_bugs),
+        }
+        
+        # 4. 更新最后整理时间
+        metadata_store.set_last_organize_time()
+        last_organize_time = metadata_store.get_last_organize_time()
+        
+        return {
+            'invalid_candidates': invalid_candidates,
+            'unverified_old': unverified_old,
+            'statistics': statistics,
+            'last_organize_time': last_organize_time,
+        }
+    
+    def get_bug_detail(self, bug_id: int) -> Optional[dict[str, Any]]:
+        self._ensure_loaded()
+        bug = self._bugs.get(bug_id)
+        if not bug:
+            raise ValidationError(f"Bug #{bug_id} 不存在")
+        
+        # 返回副本，避免外部修改
+        return dict(bug)
+    
+    def recall_by_path(self, file_path: str, limit: int = RECALL_LIMIT) -> list[dict[str, Any]]:
+        self._ensure_loaded()
+        file_path = normalize_path(file_path)
+        matched_ids = set()
+        
+        # 路径索引匹配
+        for path, ids in self.path_index.items():
+            if match_path(file_path, path):
+                matched_ids.update(ids)
+        
+        results = [
+            self._bugs[bid]
+            for bid in matched_ids
+            if bid in self._bugs and self._bugs[bid].get('status') != 'invalid'
+        ]
+        results.sort(key=lambda x: x.get('score', 0), reverse=True)
+        
+        # 限制返回数量，只返回需要的字段
+        result_list = []
+        for bug in results[:limit]:
+            result_list.append({
+                "id": bug["id"],
+                "title": bug["title"],
+                "phenomenon": bug["phenomenon"],
+                "score": bug["score"],
+                "status": bug["status"],
+                "verified": bug.get("verified", False),
+                "root_cause": bug.get("root_cause"),
+                "solution": bug.get("solution"),
+                "test_case": bug.get("test_case"),
+                "paths": bug.get("paths", []),
+                "impacts": bug.get("impacts", []),
+            })
+        return result_list
+    
+    def migrate_bug_paths_after_refactor(self, old_path: str, new_path: str) -> list[int]:
+        """路径迁移：只处理 paths 和 module_patterns，impacts 不再存储路径"""
+        migrated_bugs = []
+
+        # 通过 paths 匹配
+        affected_bugs = self.recall_by_path(old_path)
+        
+        # 也通过 module_patterns 匹配（用户搜索用的模式）
+        pattern_bugs = self._search_by_module_patterns(old_path)
+
+        # 合并结果（按 id 去重）
+        seen_ids = set()
+        for bug_summary in affected_bugs + pattern_bugs:
+            bug_id = bug_summary["id"]
+            if bug_id not in seen_ids:
+                seen_ids.add(bug_id)
+                bug = self._bugs.get(bug_id)
+                if bug:
+                    updated = False
+                    old_path_norm = normalize_path(old_path)
+                    new_path_norm = normalize_path(new_path)
+
+                    # 更新 paths（支持字符串和对象两种格式）
+                    current_paths = bug.get("paths", [])
+                    new_paths = []
+                    for p in current_paths:
+                        if isinstance(p, dict):
+                            path_file = p.get('file', '')
+                        else:
+                            path_file = p
+
+                        if path_file == old_path_norm:
+                            # 替换为新路径
+                            if isinstance(p, dict):
+                                new_paths.append({
+                                    'file': new_path_norm,
+                                    'functions': p.get('functions', [])
+                                })
+                            else:
+                                new_paths.append(new_path_norm)
+                            updated = True
+                        else:
+                            new_paths.append(p)
+
+                    if updated:
+                        bug["paths"] = new_paths
+
+                    # 更新 module_patterns
+                    current_module_patterns = bug.get("module_patterns", [])
+                    matched_module_patterns = [r for r in current_module_patterns if match_path(old_path_norm, r)]
+                    if matched_module_patterns:
+                        updated_module_patterns = []
+                        for r in current_module_patterns:
+                            if r in matched_module_patterns:
+                                if r.endswith("/*"):
+                                    base_dir = "/".join(new_path_norm.split("/")[:-1])
+                                    updated_module_patterns.append(f"{base_dir}/*")
+                                else:
+                                    updated_module_patterns.append(new_path_norm)
+                            else:
+                                updated_module_patterns.append(r)
+                        bug["module_patterns"] = updated_module_patterns
+                        updated = True
+
+                    if updated:
+                        bug["updated_at"] = datetime.now().isoformat()
+                        self._append_bug(bug)
+                        migrated_bugs.append(bug_id)
+
+        return list(set(migrated_bugs))
+
     def _ensure_loaded(self):
         """确保数据已加载（mtime 变化时重新加载）"""
         if not self._loaded:
@@ -230,9 +463,9 @@ class JSONLBackend(BugStorageBackend):
             pass
     
     # =========================================================================
-    # CRUD 操作
+    # CRUD 操作（私有方法）
     # =========================================================================
-    def add_bug(self, title: str, phenomenon: str, root_cause: Optional[str] = None,
+    def _add_bug(self, title: str, phenomenon: str, root_cause: Optional[str] = None,
                 solution: Optional[str] = None, test_case: Optional[str] = None,
                 verified: bool = False, scores: Optional[dict[str, float]] = None,
                 paths: Optional[list[str]] = None, tags: Optional[list[str]] = None,
@@ -279,7 +512,7 @@ class JSONLBackend(BugStorageBackend):
         self._append_bug(bug)
         return bug_id, score
     
-    def update_bug(self, bug_id: int, title: Optional[str] = None,
+    def _update_bug(self, bug_id: int, title: Optional[str] = None,
                    phenomenon: Optional[str] = None, root_cause: Optional[str] = None,
                    solution: Optional[str] = None, test_case: Optional[str] = None,
                    status: Optional[str] = None, verified: Optional[bool] = None,
@@ -353,7 +586,7 @@ class JSONLBackend(BugStorageBackend):
         
         self._append_bug(bug)
     
-    def delete_bug(self, bug_id: int) -> None:
+    def _delete_bug(self, bug_id: int) -> None:
         """删除 bug（标记为 invalid）"""
         self._ensure_loaded()
         if bug_id not in self._bugs:
@@ -365,16 +598,7 @@ class JSONLBackend(BugStorageBackend):
         bug['updated_at'] = datetime.now().isoformat()
         self._append_bug(bug)
     
-    def get_bug_detail(self, bug_id: int) -> Optional[dict[str, Any]]:
-        self._ensure_loaded()
-        bug = self._bugs.get(bug_id)
-        if not bug:
-            raise ValidationError(f"Bug #{bug_id} 不存在")
-        
-        # 返回副本，避免外部修改
-        return dict(bug)
-    
-    def list_bugs(self, status: Optional[str] = None, order_by: str = "score",
+    def _list_bugs(self, status: Optional[str] = None, order_by: str = "score",
                   limit: int = 50, offset: int = 0) -> list[dict[str, Any]]:
         self._ensure_loaded()
         results = list(self._bugs.values())
@@ -390,11 +614,11 @@ class JSONLBackend(BugStorageBackend):
         
         return results[offset:offset+limit]
     
-    def count_bugs(self) -> int:
+    def _count_bugs(self) -> int:
         self._ensure_loaded()
         return len(self._bugs)
     
-    def increment_score(self, bug_id: int, dimension: str = "occurrences",
+    def _increment_score(self, bug_id: int, dimension: str = "occurrences",
                        delta: float = 1.0) -> None:
         self._ensure_loaded()
         bug = self._bugs.get(bug_id)
@@ -409,7 +633,7 @@ class JSONLBackend(BugStorageBackend):
         
         self._append_bug(bug)
     
-    def update_bug_paths(self, bug_id: int, new_paths: list[str]) -> None:
+    def _update_bug_paths(self, bug_id: int, new_paths: list[str]) -> None:
         self._ensure_loaded()
         bug = self._bugs.get(bug_id)
         if not bug:
@@ -419,7 +643,7 @@ class JSONLBackend(BugStorageBackend):
         bug["updated_at"] = datetime.now().isoformat()
         self._append_bug(bug)
     
-    def update_bug_module_patterns(self, bug_id: int, new_module_patterns: list[str]) -> None:
+    def _update_bug_module_patterns(self, bug_id: int, new_module_patterns: list[str]) -> None:
         self._ensure_loaded()
         bug = self._bugs.get(bug_id)
         if not bug:
@@ -429,7 +653,7 @@ class JSONLBackend(BugStorageBackend):
         bug["updated_at"] = datetime.now().isoformat()
         self._append_bug(bug)
     
-    def add_module_pattern(self, bug_id: int, pattern: str) -> None:
+    def _add_module_pattern(self, bug_id: int, pattern: str) -> None:
         self._ensure_loaded()
         bug = self._bugs.get(bug_id)
         if not bug:
@@ -441,9 +665,9 @@ class JSONLBackend(BugStorageBackend):
             self._append_bug(bug)
     
     # =========================================================================
-    # 搜索功能
+    # 搜索功能（私有方法）
     # =========================================================================
-    def search_by_keyword(self, keyword: str, limit: int = SEARCH_LIMIT) -> list[dict[str, Any]]:
+    def _search_by_keyword(self, keyword: str, limit: int = SEARCH_LIMIT) -> list[dict[str, Any]]:
         self._ensure_loaded()
         keywords = [k.strip().lower() for k in keyword.split() if k.strip()]
         if not keywords:
@@ -466,7 +690,7 @@ class JSONLBackend(BugStorageBackend):
         results.sort(key=lambda x: x.get('score', 0), reverse=True)
         return results[:limit]
     
-    def search_by_tag(self, tag: str, limit: int = SEARCH_LIMIT) -> list[dict[str, Any]]:
+    def _search_by_tag(self, tag: str, limit: int = SEARCH_LIMIT) -> list[dict[str, Any]]:
         self._ensure_loaded()
         tag = tag.lower()
         matched_ids = set()
@@ -479,7 +703,7 @@ class JSONLBackend(BugStorageBackend):
         results.sort(key=lambda x: x.get('score', 0), reverse=True)
         return results[:limit]
     
-    def search_recent(self, days: int = 7, limit: int = SEARCH_LIMIT) -> list[dict[str, Any]]:
+    def _search_recent(self, days: int = 7, limit: int = SEARCH_LIMIT) -> list[dict[str, Any]]:
         self._ensure_loaded()
         cutoff = datetime.now().timestamp() - (days * 86400)
         cutoff_iso = datetime.fromtimestamp(cutoff).isoformat()
@@ -491,7 +715,7 @@ class JSONLBackend(BugStorageBackend):
         results.sort(key=lambda x: x.get('created_at', ''), reverse=True)
         return results[:limit]
     
-    def search_high_score(self, min_score: float = 30.0, limit: int = SEARCH_LIMIT) -> list[dict[str, Any]]:
+    def _search_high_score(self, min_score: float = 30.0, limit: int = SEARCH_LIMIT) -> list[dict[str, Any]]:
         self._ensure_loaded()
         results = [
             b for b in self._bugs.values()
@@ -500,7 +724,7 @@ class JSONLBackend(BugStorageBackend):
         results.sort(key=lambda x: x.get('score', 0), reverse=True)
         return results[:limit]
     
-    def search_top_critical(self, limit: int = 20) -> list[dict[str, Any]]:
+    def _search_top_critical(self, limit: int = 20) -> list[dict[str, Any]]:
         self._ensure_loaded()
         results = [
             b for b in self._bugs.values()
@@ -509,7 +733,7 @@ class JSONLBackend(BugStorageBackend):
         results.sort(key=lambda x: x.get('score', 0), reverse=True)
         return results[:limit]
     
-    def search_recent_unverified(self, days: int = SEARCH_LIMIT, limit: int = SEARCH_LIMIT) -> list[dict[str, Any]]:
+    def _search_recent_unverified(self, days: int = SEARCH_LIMIT, limit: int = SEARCH_LIMIT) -> list[dict[str, Any]]:
         self._ensure_loaded()
         cutoff = datetime.now().timestamp() - (days * 86400)
         cutoff_iso = datetime.fromtimestamp(cutoff).isoformat()
@@ -523,7 +747,7 @@ class JSONLBackend(BugStorageBackend):
         results.sort(key=lambda x: x.get('score', 0), reverse=True)
         return results[:limit]
     
-    def search_by_status_and_score(
+    def _search_by_status_and_score(
         self, status: str = "active", min_score: float = 0.0,
         max_score: Optional[float] = None, verified: Optional[bool] = None,
         order_by: str = "score", limit: int = SEARCH_LIMIT,
@@ -546,45 +770,7 @@ class JSONLBackend(BugStorageBackend):
         
         return results[:limit]
     
-    # =========================================================================
-    # 召回功能
-    # =========================================================================
-    def recall_by_path(self, file_path: str, limit: int = RECALL_LIMIT) -> list[dict[str, Any]]:
-        self._ensure_loaded()
-        file_path = normalize_path(file_path)
-        matched_ids = set()
-        
-        # 路径索引匹配
-        for path, ids in self.path_index.items():
-            if match_path(file_path, path):
-                matched_ids.update(ids)
-        
-        results = [
-            self._bugs[bid]
-            for bid in matched_ids
-            if bid in self._bugs and self._bugs[bid].get('status') != 'invalid'
-        ]
-        results.sort(key=lambda x: x.get('score', 0), reverse=True)
-        
-        # 限制返回数量，只返回需要的字段
-        result_list = []
-        for bug in results[:limit]:
-            result_list.append({
-                "id": bug["id"],
-                "title": bug["title"],
-                "phenomenon": bug["phenomenon"],
-                "score": bug["score"],
-                "status": bug["status"],
-                "verified": bug.get("verified", False),
-                "root_cause": bug.get("root_cause"),
-                "solution": bug.get("solution"),
-                "test_case": bug.get("test_case"),
-                "paths": bug.get("paths", []),
-                "impacts": bug.get("impacts", []),
-            })
-        return result_list
-
-    def search_by_module_patterns(self, pattern: str, limit: int = RECALL_LIMIT) -> list[dict[str, Any]]:
+    def _search_by_module_patterns(self, pattern: str, limit: int = RECALL_LIMIT) -> list[dict[str, Any]]:
         self._ensure_loaded()
         pattern_norm = normalize_path(pattern)
         matched_ids = set()
@@ -619,9 +805,9 @@ class JSONLBackend(BugStorageBackend):
         return result_list
 
     # =========================================================================
-    # 影响关系
+    # 影响关系（私有方法）
     # =========================================================================
-    def add_impact(self, source_bug_id: int,
+    def _add_impact(self, source_bug_id: int,
                    solution_change: str,
                    impact_description: str,
                    impact_type: str = "regression",
@@ -652,11 +838,11 @@ class JSONLBackend(BugStorageBackend):
         self._append_bug(bug)
 
         # 自动累加 prevention 分数（delta 由调用方根据 severity 规则计算传入）
-        self.increment_score(source_bug_id, "prevention", prevention_delta)
+        self._increment_score(source_bug_id, "prevention", prevention_delta)
 
         return impact_id
 
-    def delete_impact(self, impact_id: int, prevention_delta: float) -> None:
+    def _delete_impact(self, impact_id: int, prevention_delta: float) -> None:
         self._ensure_loaded()
 
         for bug_id, bug in self._bugs.items():
@@ -666,10 +852,10 @@ class JSONLBackend(BugStorageBackend):
                 bug["updated_at"] = datetime.now().isoformat()
                 self._append_bug(bug)
                 # 扣减 prevention 分数（delta 为正值，内部取负）
-                self.increment_score(bug_id, "prevention", -prevention_delta)
+                self._increment_score(bug_id, "prevention", -prevention_delta)
                 return
 
-    def compact_file(self) -> int:
+    def _compact_file(self) -> int:
         """压缩文件：移除 status='invalid' 的记录，相同ID只保留最后一条
         
         Returns:
@@ -706,9 +892,9 @@ class JSONLBackend(BugStorageBackend):
         return max(0, removed_count)
 
     # =========================================================================
-    # 高级功能
+    # 高级功能（私有方法）
     # =========================================================================
-    def mark_invalid(self, bug_id: int, reason: Optional[str] = None) -> None:
+    def _mark_invalid(self, bug_id: int, reason: Optional[str] = None) -> None:
         self._ensure_loaded()
         bug = self._bugs.get(bug_id)
         if not bug:
@@ -724,7 +910,7 @@ class JSONLBackend(BugStorageBackend):
         bug["score"] = _calc_score(bug.get("scores", {}))
         self._append_bug(bug)
     
-    def list_unverified_old(self, days: int = THRESHOLD_OLD_BUGS_DAYS, limit: int = 20) -> list[dict[str, Any]]:
+    def _list_unverified_old(self, days: int = THRESHOLD_OLD_BUGS_DAYS, limit: int = 20) -> list[dict[str, Any]]:
         self._ensure_loaded()
         cutoff = datetime.now().timestamp() - (days * 86400)
         cutoff_iso = datetime.fromtimestamp(cutoff).isoformat()
@@ -757,7 +943,7 @@ class JSONLBackend(BugStorageBackend):
         abs_path = root / path
         return abs_path.exists()
     
-    def check_bug_paths(self, bug_id: int) -> list[str]:
+    def _check_bug_paths(self, bug_id: int) -> list[str]:
         """检查 bug 的 paths/module_patterns 路径是否有效，返回无效路径列表"""
         self._ensure_loaded()
         bug = self._bugs.get(bug_id)
@@ -779,394 +965,239 @@ class JSONLBackend(BugStorageBackend):
 
         return invalid_paths
 
-    def migrate_bug_paths_after_refactor(self, old_path: str, new_path: str) -> list[int]:
-        """路径迁移：只处理 paths 和 module_patterns，impacts 不再存储路径"""
-        migrated_bugs = []
-
-        # 通过 paths 匹配
-        affected_bugs = self.recall_by_path(old_path)
-
-        # 也通过 module_patterns 匹配（用户搜索用的模式）
-        pattern_bugs = self.search_by_module_patterns(old_path)
-
-        # 合并结果（按 id 去重）
-        seen_ids = set()
-        for bug_summary in affected_bugs + pattern_bugs:
-            bug_id = bug_summary["id"]
-            if bug_id not in seen_ids:
-                seen_ids.add(bug_id)
-                bug = self._bugs.get(bug_id)
-                if bug:
-                    updated = False
-                    old_path_norm = normalize_path(old_path)
-                    new_path_norm = normalize_path(new_path)
-
-                    # 更新 paths（支持字符串和对象两种格式）
-                    current_paths = bug.get("paths", [])
-                    new_paths = []
-                    for p in current_paths:
-                        if isinstance(p, dict):
-                            path_file = p.get('file', '')
-                        else:
-                            path_file = p
-
-                        if path_file == old_path_norm:
-                            # 替换为新路径
-                            if isinstance(p, dict):
-                                new_paths.append({
-                                    'file': new_path_norm,
-                                    'functions': p.get('functions', [])
-                                })
-                            else:
-                                new_paths.append(new_path_norm)
-                            updated = True
-                        else:
-                            new_paths.append(p)
-
-                    if updated:
-                        bug["paths"] = new_paths
-
-                    # 更新 module_patterns
-                    current_module_patterns = bug.get("module_patterns", [])
-                    matched_module_patterns = [r for r in current_module_patterns if match_path(old_path_norm, r)]
-                    if matched_module_patterns:
-                        updated_module_patterns = []
-                        for r in current_module_patterns:
-                            if r in matched_module_patterns:
-                                if r.endswith("/*"):
-                                    base_dir = "/".join(new_path_norm.split("/")[:-1])
-                                    updated_module_patterns.append(f"{base_dir}/*")
-                                else:
-                                    updated_module_patterns.append(new_path_norm)
-                            else:
-                                updated_module_patterns.append(r)
-                        bug["module_patterns"] = updated_module_patterns
-                        updated = True
-
-                    if updated:
-                        bug["updated_at"] = datetime.now().isoformat()
-                        self._append_bug(bug)
-                        migrated_bugs.append(bug_id)
-
-        return list(set(migrated_bugs))
-    
-    # -------------------- 重构后的新接口实现 --------------------
-    
-    def save_bugs(self, bugs_data) -> Any:
-        """统一保存接口（支持多种 mode，支持批量）"""
-        import json
-
-        # 标准化输入：统一为数组格式
-        if isinstance(bugs_data, dict):
-            if 'bugs' in bugs_data:
-                bugs_list = bugs_data['bugs']
-            else:
-                # 单个 bug 操作（dict 格式）
-                bugs_list = [bugs_data]
-        elif isinstance(bugs_data, list):
-            bugs_list = bugs_data
-        else:
-            return {'error': '无效的输入格式', 'isError': True}
-
-        results = []
-        for bug_data in bugs_list:
-            result = self._save_bug(**bug_data)
-            if isinstance(result, dict) and result.get('isError'):
-                return result  # 直接返回错误
-            results.append(result)
-
-        return {
-            'content': [{'type': 'text', 'text': json.dumps({'results': results, 'count': len(results)}, ensure_ascii=False)}]
-        }
-
     def _save_bug(self, **kwargs) -> dict:
-        """保存单个 bug"""
-        import json
-        
-        try:
-            mode = kwargs.get('mode', 'add')
-            
-            if mode == 'add':
-                # === 新增 ===
-                # add 模式不能传 id，必须由系统自动生成
-                if 'id' in kwargs:
-                    return {'error': '新增 bug 时不能传 id，id 由系统自动生成', 'isError': True}
+        """保存单个 bug，返回纯数据（不含 MCP 格式）"""
 
-                required_fields = ['title', 'phenomenon']
-                for field in required_fields:
-                    if field not in kwargs:
-                        return {'error': f'新增 bug 时，{field} 为必填字段', 'isError': True}
-                
-                # 转换 paths 格式（字符串数组 -> 对象数组）
-                add_kwargs = {k: v for k, v in kwargs.items()
-                              if k not in ('mode', 'id', 'verified_at')}
-                if 'paths' in add_kwargs and isinstance(add_kwargs['paths'], list):
-                    # 如果 paths 是字符串数组，转换为对象格式
-                    if add_kwargs['paths'] and isinstance(add_kwargs['paths'][0], str):
-                        add_kwargs['paths'] = [{'file': p, 'functions': []} for p in add_kwargs['paths']]
-                
-                bug_id, score = self.add_bug(**add_kwargs)
-                return {'id': bug_id}
-            
-            else:
-                # === 更新 ===
-                bug_id = kwargs.get('id')
-                if not bug_id:
-                    return {'error': '更新操作必须提供 bug id', 'isError': True}
-                
-                # 检查 ID 是否存在
-                existing = self.get_bug_detail(bug_id)
-                if not existing:
-                    return {'error': f'Bug #{bug_id} 不存在', 'isError': True}
-                
-                if mode == 'update_fields':
-                    update_data = {k: v for k, v in kwargs.items() if k not in ('id', 'mode') and v is not None}
-                    if not update_data:
-                        return {'error': "❌ 错误：update_fields 模式至少需要传一个要更新的字段", 'isError': True}
-                    self.update_bug(bug_id, **update_data)
-                
-                elif mode == 'delete':
-                    # 软删除：设置 status='invalid'
-                    self.update_bug(bug_id, status='invalid')
-                
-                elif mode == 'add_impacts':
-                    if 'impacts' not in kwargs:
-                        return {'error': "❌ 错误：add_impacts 模式必须传 impacts", 'isError': True}
-                    for impact in kwargs['impacts']:
-                        self.add_impact(bug_id, **impact)
-                
-                elif mode == 'remove_impacts':
-                    if 'impact_ids' not in kwargs:
-                        return {'error': "❌ 错误：remove_impacts 模式必须传 impact_ids", 'isError': True}
-                    # 批量删除
-                    for impact_id in kwargs['impact_ids']:
-                        self.delete_impact(impact_id, prevention_delta=0)
-                
-                elif mode == 'replace_impacts':
-                    if 'impacts' not in kwargs:
-                        return {'error': "❌ 错误：replace_impacts 模式必须传 impacts", 'isError': True}
-                    old_bug = self.get_bug_detail(bug_id)
-                    for impact in old_bug.get('impacts', []):
-                        self.delete_impact(impact['id'], prevention_delta=0)
-                    for impact in kwargs['impacts']:
-                        self.add_impact(bug_id, **impact)
-                
-                elif mode == 'add_paths':
-                    if 'paths' not in kwargs:
-                        return {'error': "❌ 错误：add_paths 模式必须传 paths", 'isError': True}
-                    old_bug = self.get_bug_detail(bug_id)
-                    
-                    # 构建旧 paths 的 file -> path 映射
-                    old_paths_map = {}
-                    for p in old_bug.get('paths', []):
-                        if isinstance(p, dict):
-                            old_paths_map[p.get('file')] = p
-                        else:
-                            old_paths_map[p] = {'file': p, 'functions': []}
-                    
-                    # 合并新 paths（相同 file 则合并 functions）
-                    for new_p in kwargs['paths']:
-                        if isinstance(new_p, dict):
-                            file = new_p.get('file')
-                            if file in old_paths_map:
-                                # 合并 functions（去重）
-                                old_funcs = set(old_paths_map[file].get('functions', []))
-                                new_funcs = set(new_p.get('functions', []))
-                                old_paths_map[file]['functions'] = list(old_funcs | new_funcs)
-                            else:
-                                old_paths_map[file] = new_p
-                        else:
-                            # 字符串格式，直接添加
-                            if new_p not in old_paths_map:
-                                old_paths_map[new_p] = {'file': new_p, 'functions': []}
-                    
-                    merged_paths = list(old_paths_map.values())
-                    self.update_bug(bug_id, paths=merged_paths)
-                
-                elif mode == 'remove_paths':
-                    if 'paths' not in kwargs:
-                        return {'error': "❌ 错误：remove_paths 模式必须传 paths", 'isError': True}
-                    old_bug = self.get_bug_detail(bug_id)
-                    remove_paths = kwargs['paths']
-                    
-                    # 构建要移除的映射: {file: set(functions) or None}
-                    remove_map = {}
-                    for p in remove_paths:
-                        if isinstance(p, dict):
-                            file = p.get('file')
-                            funcs = p.get('functions', [])
-                            if funcs:
-                                # 有 functions，只移除这些函数
-                                remove_map.setdefault(file, set()).update(funcs)
-                            else:
-                                # 无 functions，标记删除整个 file
-                                remove_map[file] = None
-                        else:
-                            # 字符串格式，删除整个 file
-                            remove_map[p] = None
-                    
-                    # 执行移除
-                    filtered_paths = []
-                    for p in old_bug.get('paths', []):
-                        if isinstance(p, dict):
-                            file = p.get('file')
-                            funcs = p.get('functions', [])
-                            
-                            if file in remove_map:
-                                if remove_map[file] is None:
-                                    # 删除整个 file
-                                    continue
-                                else:
-                                    # 只移除指定 functions
-                                    remaining_funcs = [f for f in funcs if f not in remove_map[file]]
-                                    if remaining_funcs:
-                                        filtered_paths.append({'file': file, 'functions': remaining_funcs})
-                                    # 如果 functions 全被移除，则不添加（相当于删除该 path）
-                            else:
-                                filtered_paths.append(p)
-                        else:
-                            # 字符串格式
-                            if p not in remove_map:
-                                filtered_paths.append(p)
-                    
-                    self.update_bug(bug_id, paths=filtered_paths)
-                
-                elif mode == 'replace_paths':
-                    if 'paths' not in kwargs:
-                        return {'error': "❌ 错误：replace_paths 模式必须传 paths", 'isError': True}
-                    self.update_bug(bug_id, paths=kwargs['paths'])
-                
-                elif mode == 'add_module_patterns':
-                    if 'module_patterns' not in kwargs:
-                        return {'error': "❌ 错误：add_module_patterns 模式必须传 module_patterns", 'isError': True}
-                    old_bug = self.get_bug_detail(bug_id)
-                    merged_module_patterns = list(set((old_bug.get('module_patterns') or []) + kwargs['module_patterns']))
-                    self.update_bug(bug_id, module_patterns=merged_module_patterns)
-                
-                elif mode == 'remove_module_patterns':
-                    if 'module_patterns' not in kwargs:
-                        return {'error': "❌ 错误：remove_module_patterns 模式必须传 module_patterns", 'isError': True}
-                    old_bug = self.get_bug_detail(bug_id)
-                    filtered_module_patterns = [r for r in (old_bug.get('module_patterns') or []) if r not in kwargs['module_patterns']]
-                    self.update_bug(bug_id, module_patterns=filtered_module_patterns)
-                
-                elif mode == 'replace_module_patterns':
-                    if 'module_patterns' not in kwargs:
-                        return {'error': "❌ 错误：replace_module_patterns 模式必须传 module_patterns", 'isError': True}
-                    self.update_bug(bug_id, module_patterns=kwargs['module_patterns'])
-                
-                elif mode == 'add_keywords':
-                    if 'keywords' not in kwargs:
-                        return {'error': "❌ 错误：add_keywords 模式必须传 keywords", 'isError': True}
-                    old_bug = self.get_bug_detail(bug_id)
-                    merged_keywords = list(set((old_bug.get('keywords') or []) + kwargs['keywords']))
-                    self.update_bug(bug_id, **{'keywords': merged_keywords})
-                
-                elif mode == 'remove_keywords':
-                    if 'keywords' not in kwargs:
-                        return {'error': "❌ 错误：remove_keywords 模式必须传 keywords", 'isError': True}
-                    old_bug = self.get_bug_detail(bug_id)
-                    filtered_keywords = [k for k in (old_bug.get('keywords') or []) if k not in kwargs['keywords']]
-                    self.update_bug(bug_id, **{'keywords': filtered_keywords})
-                
-                elif mode == 'replace_keywords':
-                    if 'keywords' not in kwargs:
-                        return {'error': "❌ 错误：replace_keywords 模式必须传 keywords", 'isError': True}
-                    self.update_bug(bug_id, **{'keywords': kwargs['keywords']})
-                
-                elif mode == 'add_tags':
-                    if 'tags' not in kwargs:
-                        return {'error': "❌ 错误：add_tags 模式必须传 tags", 'isError': True}
-                    old_bug = self.get_bug_detail(bug_id)
-                    merged_tags = list(set((old_bug.get('tags') or []) + kwargs['tags']))
-                    self.update_bug(bug_id, **{'tags': merged_tags})
-                
-                elif mode == 'remove_tags':
-                    if 'tags' not in kwargs:
-                        return {'error': "❌ 错误：remove_tags 模式必须传 tags", 'isError': True}
-                    old_bug = self.get_bug_detail(bug_id)
-                    filtered_tags = [t for t in (old_bug.get('tags') or []) if t not in kwargs['tags']]
-                    self.update_bug(bug_id, **{'tags': filtered_tags})
-                
-                elif mode == 'replace_tags':
-                    if 'tags' not in kwargs:
-                        return {'error': "❌ 错误：replace_tags 模式必须传 tags", 'isError': True}
-                    self.update_bug(bug_id, **{'tags': kwargs['tags']})
-                
-                elif mode == 'increment_scores':
-                    if 'scores' not in kwargs:
-                        return {'error': "❌ 错误：increment_scores 模式必须传 scores", 'isError': True}
-                    old_bug = self.get_bug_detail(bug_id)
-                    merged_scores = dict(old_bug.get('scores') or {})
-                    for dim, delta in kwargs['scores'].items():
-                        merged_scores[dim] = merged_scores.get(dim, 0) + delta
-                    self.update_bug(bug_id, scores=merged_scores)
-                
-                elif mode == 'decrement_scores':
-                    if 'scores' not in kwargs:
-                        return {'error': "❌ 错误：decrement_scores 模式必须传 scores", 'isError': True}
-                    old_bug = self.get_bug_detail(bug_id)
-                    merged_scores = dict(old_bug.get('scores') or {})
-                    for dim, delta in kwargs['scores'].items():
-                        merged_scores[dim] = merged_scores.get(dim, 0) - delta
-                    self.update_bug(bug_id, scores=merged_scores)
-                
-                elif mode == 'replace_scores':
-                    if 'scores' not in kwargs:
-                        return {'error': "❌ 错误：replace_scores 模式必须传 scores", 'isError': True}
-                    self.update_bug(bug_id, scores=kwargs['scores'])
-                
-                return {'id': bug_id}
-        
-        except Exception as e:
-            return {'error': f"❌ 服务器错误：{str(e)}", 'isError': True}
-    
-    def search_bugs(self, **kwargs) -> dict[str, Any]:
-        """统一搜索接口（支持多种模式 + 分页）"""
-        mode = kwargs.get('mode')
-        limit = kwargs.get('limit', 20)
-        offset = kwargs.get('offset', 0)
-        
-        # 根据 mode 路由到不同的搜索方法
-        if mode == 'keyword':
-            bugs = self.search_by_keyword(kwargs['keyword'], limit=limit + offset)
-        elif mode == 'tag':
-            bugs = self.search_by_tag(kwargs['tag'], limit=limit + offset)
-        elif mode == 'recent':
-            bugs = self.search_recent(kwargs.get('days', 7), limit=limit + offset)
-        elif mode == 'high_score':
-            bugs = self.search_high_score(kwargs.get('min_score', 30.0), limit=limit + offset)
-        elif mode == 'critical':
-            bugs = self.search_top_critical(limit=limit + offset)
-        elif mode == 'unverified':
-            bugs = self.search_recent_unverified(kwargs.get('days', 7), limit=limit + offset)
-        elif mode == 'custom':
-            bugs = self.search_by_status_and_score(
-                status=kwargs.get('status', 'active'),
-                min_score=kwargs.get('min_score', 0.0),
-                max_score=kwargs.get('max_score'),
-                verified=kwargs.get('verified'),
-                order_by=kwargs.get('order_by', 'score'),
-                limit=limit + offset
-            )
-        elif mode == 'module':
-            bugs = self.search_by_module_patterns(kwargs['pattern'], limit=limit + offset)
+        mode = kwargs.get('mode', 'add')
+
+        if mode == 'add':
+            # === 新增 ===
+            # add 模式不能传 id，必须由系统自动生成
+            if 'id' in kwargs:
+                raise ValueError('新增 bug 时不能传 id，id 由系统自动生成')
+
+            required_fields = ['title', 'phenomenon']
+            for field in required_fields:
+                if field not in kwargs:
+                    raise ValueError(f'新增 bug 时，{field} 为必填字段')
+
+            # 转换 paths 格式（字符串数组 -> 对象数组）
+            add_kwargs = {k: v for k, v in kwargs.items()
+                          if k not in ('mode', 'id', 'verified_at')}
+            if 'paths' in add_kwargs and isinstance(add_kwargs['paths'], list):
+                # 如果 paths 是字符串数组，转换为对象格式
+                if add_kwargs['paths'] and isinstance(add_kwargs['paths'][0], str):
+                    add_kwargs['paths'] = [{'file': p, 'functions': []} for p in add_kwargs['paths']]
+
+            bug_id, score = self._add_bug(**add_kwargs)
+            return {'id': bug_id}
+
         else:
-            raise ValueError(f"Unknown search mode: {mode}")
-        
-        # 应用分页
-        total = len(bugs)
-        paginated_bugs = bugs[offset:offset + limit]
-        has_more = offset + limit < total
-        
-        return {
-            'bugs': paginated_bugs,
-            'pagination': {
-                'total': total,
-                'limit': limit,
-                'offset': offset,
-                'has_more': has_more
-            }
-        }
-    
+            # === 更新 ===
+            bug_id = kwargs.get('id')
+            if not bug_id:
+                raise ValueError('更新操作必须提供 bug id')
 
+            # 检查 ID 是否存在
+            existing = self.get_bug_detail(bug_id)
+            if not existing:
+                raise ValueError(f'Bug #{bug_id} 不存在')
+
+            if mode == 'update_fields':
+                update_data = {k: v for k, v in kwargs.items() if k not in ('id', 'mode') and v is not None}
+                if not update_data:
+                    raise ValueError("update_fields 模式至少需要传一个要更新的字段")
+                self._update_bug(bug_id, **update_data)
+
+            elif mode == 'delete':
+                # 软删除：设置 status='invalid'
+                self._update_bug(bug_id, status='invalid')
+
+            elif mode == 'add_impacts':
+                if 'impacts' not in kwargs:
+                    raise ValueError("add_impacts 模式必须传 impacts")
+                for impact in kwargs['impacts']:
+                    self._add_impact(bug_id, **impact)
+
+            elif mode == 'remove_impacts':
+                if 'impact_ids' not in kwargs:
+                    raise ValueError("remove_impacts 模式必须传 impact_ids")
+                # 批量删除
+                for impact_id in kwargs['impact_ids']:
+                    self._delete_impact(impact_id, prevention_delta=0)
+
+            elif mode == 'replace_impacts':
+                if 'impacts' not in kwargs:
+                    raise ValueError("replace_impacts 模式必须传 impacts")
+                old_bug = self.get_bug_detail(bug_id)
+                for impact in old_bug.get('impacts', []):
+                    self._delete_impact(impact['id'], prevention_delta=0)
+                for impact in kwargs['impacts']:
+                    self._add_impact(bug_id, **impact)
+
+            elif mode == 'add_paths':
+                if 'paths' not in kwargs:
+                    raise ValueError("add_paths 模式必须传 paths")
+                old_bug = self.get_bug_detail(bug_id)
+
+                # 构建旧 paths 的 file -> path 映射
+                old_paths_map = {}
+                for p in old_bug.get('paths', []):
+                    if isinstance(p, dict):
+                        old_paths_map[p.get('file')] = p
+                    else:
+                        old_paths_map[p] = {'file': p, 'functions': []}
+
+                # 合并新 paths（相同 file 则合并 functions）
+                for new_p in kwargs['paths']:
+                    if isinstance(new_p, dict):
+                        file = new_p.get('file')
+                        if file in old_paths_map:
+                            # 合并 functions（去重）
+                            old_funcs = set(old_paths_map[file].get('functions', []))
+                            new_funcs = set(new_p.get('functions', []))
+                            old_paths_map[file]['functions'] = list(old_funcs | new_funcs)
+                        else:
+                            old_paths_map[file] = new_p
+                    else:
+                        # 字符串格式，直接添加
+                        if new_p not in old_paths_map:
+                            old_paths_map[new_p] = {'file': new_p, 'functions': []}
+
+                merged_paths = list(old_paths_map.values())
+                self._update_bug(bug_id, paths=merged_paths)
+
+            elif mode == 'remove_paths':
+                if 'paths' not in kwargs:
+                    raise ValueError("remove_paths 模式必须传 paths")
+                old_bug = self.get_bug_detail(bug_id)
+                remove_paths = kwargs['paths']
+
+                # 构建要移除的映射: {file: set(functions) or None}
+                remove_map = {}
+                for p in remove_paths:
+                    if isinstance(p, dict):
+                        file = p.get('file')
+                        funcs = p.get('functions', [])
+                        if funcs:
+                            # 有 functions，只移除这些函数
+                            remove_map.setdefault(file, set()).update(funcs)
+                        else:
+                            # 无 functions，标记删除整个 file
+                            remove_map[file] = None
+                    else:
+                        # 字符串格式，删除整个 file
+                        remove_map[p] = None
+
+                # 执行移除
+                filtered_paths = []
+                for p in old_bug.get('paths', []):
+                    if isinstance(p, dict):
+                        file = p.get('file')
+                        funcs = p.get('functions', [])
+
+                        if file in remove_map:
+                            if remove_map[file] is None:
+                                # 删除整个 file
+                                continue
+                            else:
+                                # 只移除指定 functions
+                                remaining_funcs = [f for f in funcs if f not in remove_map[file]]
+                                if remaining_funcs:
+                                    filtered_paths.append({'file': file, 'functions': remaining_funcs})
+                                # 如果 functions 全被移除，则不添加（相当于删除该 path）
+                        else:
+                            filtered_paths.append(p)
+                    else:
+                        # 字符串格式
+                        if p not in remove_map:
+                            filtered_paths.append(p)
+
+                self._update_bug(bug_id, paths=filtered_paths)
+
+            elif mode == 'replace_paths':
+                if 'paths' not in kwargs:
+                    raise ValueError("replace_paths 模式必须传 paths")
+                self._update_bug(bug_id, paths=kwargs['paths'])
+
+            elif mode == 'add_module_patterns':
+                if 'module_patterns' not in kwargs:
+                    raise ValueError("add_module_patterns 模式必须传 module_patterns")
+                old_bug = self.get_bug_detail(bug_id)
+                merged_module_patterns = list(set((old_bug.get('module_patterns') or []) + kwargs['module_patterns']))
+                self._update_bug(bug_id, module_patterns=merged_module_patterns)
+
+            elif mode == 'remove_module_patterns':
+                if 'module_patterns' not in kwargs:
+                    raise ValueError("remove_module_patterns 模式必须传 module_patterns")
+                old_bug = self.get_bug_detail(bug_id)
+                filtered_module_patterns = [r for r in (old_bug.get('module_patterns') or []) if r not in kwargs['module_patterns']]
+                self._update_bug(bug_id, module_patterns=filtered_module_patterns)
+
+            elif mode == 'replace_module_patterns':
+                if 'module_patterns' not in kwargs:
+                    raise ValueError("replace_module_patterns 模式必须传 module_patterns")
+                self._update_bug(bug_id, module_patterns=kwargs['module_patterns'])
+
+            elif mode == 'add_keywords':
+                if 'keywords' not in kwargs:
+                    raise ValueError("add_keywords 模式必须传 keywords")
+                old_bug = self.get_bug_detail(bug_id)
+                merged_keywords = list(set((old_bug.get('keywords') or []) + kwargs['keywords']))
+                self._update_bug(bug_id, **{'keywords': merged_keywords})
+
+            elif mode == 'remove_keywords':
+                if 'keywords' not in kwargs:
+                    raise ValueError("remove_keywords 模式必须传 keywords")
+                old_bug = self.get_bug_detail(bug_id)
+                filtered_keywords = [k for k in (old_bug.get('keywords') or []) if k not in kwargs['keywords']]
+                self._update_bug(bug_id, **{'keywords': filtered_keywords})
+
+            elif mode == 'replace_keywords':
+                if 'keywords' not in kwargs:
+                    raise ValueError("replace_keywords 模式必须传 keywords")
+                self._update_bug(bug_id, **{'keywords': kwargs['keywords']})
+
+            elif mode == 'add_tags':
+                if 'tags' not in kwargs:
+                    raise ValueError("add_tags 模式必须传 tags")
+                old_bug = self.get_bug_detail(bug_id)
+                merged_tags = list(set((old_bug.get('tags') or []) + kwargs['tags']))
+                self._update_bug(bug_id, **{'tags': merged_tags})
+
+            elif mode == 'remove_tags':
+                if 'tags' not in kwargs:
+                    raise ValueError("remove_tags 模式必须传 tags")
+                old_bug = self.get_bug_detail(bug_id)
+                filtered_tags = [t for t in (old_bug.get('tags') or []) if t not in kwargs['tags']]
+                self._update_bug(bug_id, **{'tags': filtered_tags})
+
+            elif mode == 'replace_tags':
+                if 'tags' not in kwargs:
+                    raise ValueError("replace_tags 模式必须传 tags")
+                self._update_bug(bug_id, **{'tags': kwargs['tags']})
+
+            elif mode == 'increment_scores':
+                if 'scores' not in kwargs:
+                    raise ValueError("increment_scores 模式必须传 scores")
+                old_bug = self.get_bug_detail(bug_id)
+                merged_scores = dict(old_bug.get('scores') or {})
+                for dim, delta in kwargs['scores'].items():
+                    merged_scores[dim] = merged_scores.get(dim, 0) + delta
+                self._update_bug(bug_id, scores=merged_scores)
+
+            elif mode == 'decrement_scores':
+                if 'scores' not in kwargs:
+                    raise ValueError("decrement_scores 模式必须传 scores")
+                old_bug = self.get_bug_detail(bug_id)
+                merged_scores = dict(old_bug.get('scores') or {})
+                for dim, delta in kwargs['scores'].items():
+                    merged_scores[dim] = merged_scores.get(dim, 0) - delta
+                self.update_bug(bug_id, scores=merged_scores)
+
+            elif mode == 'replace_scores':
+                if 'scores' not in kwargs:
+                    raise ValueError("replace_scores 模式必须传 scores")
+                self._update_bug(bug_id, scores=kwargs['scores'])
+
+            return {'id': bug_id}

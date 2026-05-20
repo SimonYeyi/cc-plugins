@@ -4,6 +4,19 @@
 
 **测试文件**: `tests/test_backends.py`
 **测试对象**: JSONLBackend（通过 `backend_factory.create_backend()` 创建）
+
+## 架构说明
+
+后端采用**最小公共接口**设计，仅暴露6个公共方法：
+1. `save_bugs()` - 统一保存（支持add/update/delete/impact/path/score等多种mode）
+2. `search_bugs()` - 统一搜索（支持keyword/tag/recent/high_score/critical/custom/module等mode）
+3. `organize_bugs()` - 整理bug-book
+4. `get_bug_detail()` - 获取详情
+5. `recall_by_path()` - 路径召回
+6. `migrate_bug_paths_after_refactor()` - 路径迁移
+
+其他所有方法均为私有（`_`前缀），仅供内部使用。
+
 **总用例数**: **68 个测试函数**
 
 ---

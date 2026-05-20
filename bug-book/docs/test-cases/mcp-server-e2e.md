@@ -26,7 +26,7 @@
 | 用例 | 描述 | 输入 | 预期 |
 |------|------|------|------|
 | TC-SB01-01 | 新增最小字段 | `{mode: "add", title, phenomenon}` | 返回 `{id: >0}` |
-| TC-SB01-02 | 新增带完整字段 | `{mode: "add", title, phenomenon, scores, paths, tags, keywords, recalls}` | id>0, score>0 |
+| TC-SB01-02 | 新增带完整字段 | `{mode: "add", title, phenomenon, scores, paths, tags, keywords, module_patterns}` | id>0, score>0 |
 | TC-SB01-03 | add 禁止传 id | `{mode: "add", id: 123, title, phenomenon}` | 返回错误 |
 | TC-SB01-04 | add 缺少必填 | `{mode: "add", title: "x"}` | 返回错误 |
 

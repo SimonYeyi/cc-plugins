@@ -4,7 +4,7 @@
 
 **测试文件**: `tests/test_backends.py`
 **测试对象**: JSONLBackend（通过 `backend_factory.create_backend()` 创建）
-**总用例数**: **72 个测试函数**
+**总用例数**: **68 个测试函数**
 
 ---
 
@@ -16,19 +16,19 @@
 | update_bug 更新记录 | 6 | TC-B01 ~ TC-B06 |
 | delete_bug 删除记录 | 3 | TC-C01 ~ TC-C03 |
 | increment_score 分数累加 | 3 | TC-D01 ~ TC-D03 |
-| update_bug_paths / add_recall | 3 | TC-E01 ~ TC-E03 |
+| update_bug_paths / add_module_pattern | 3 | TC-E01 ~ TC-E03 |
 | search_by_keyword 关键词搜索 | 5 | TC-F01 ~ TC-F05 |
-| recall_by_path / recall_by_pattern 路径召回 | 8 | TC-H01 ~ TC-H08 |
+| recall_by_path / search_by_module_patterns 路径和模块搜索 | 6 | TC-H01 ~ TC-H06 |
 | 高级搜索 | 5 | TC-S01 ~ TC-S05 |
 | get_bug_detail 详情查询 | 4 | TC-I01 ~ TC-I04 |
 | list_bugs 列表查询 | 4 | TC-J01 ~ TC-J04 |
 | mark_invalid 失效标记 | 3 | TC-K01 ~ TC-K03 |
 | 懒初始化与集成 | 3 | TC-L01 ~ TC-L03 |
-| 影响关系管理 | 5 | TC-M01 ~ TC-M05 |
-| 路径和 recalls 管理 | 5 | TC-N01 ~ TC-N05 |
+| 影响关系管理 | 6 | TC-M01 ~ TC-M05, P04 |
+| 路径和 module_patterns 管理 | 4 | TC-N01 ~ TC-N04 |
 | 路径迁移 | 2 | TC-O01 ~ TC-O02 |
-| 路径检查 | 4 | TC-P01 ~ TC-P04 |
-| **总计** | **72** | |
+| 路径检查 | 3 | TC-P01 ~ TC-P03 |
+| **总计** | **68** | |
 
 ---
 
@@ -42,7 +42,7 @@
 | TC-A04 | 新增 verified=False | verified=False | verified=0, status=active |
 | TC-A05 | 新增空 scores | scores={} | score=0 |
 | TC-A06 | 新增多条 paths | paths=["a.ts", "b.ts"] | len(paths)=2 |
-| TC-A07 | 新增多条 recalls | recalls=["auth/*", "src/*"] | len(recalls)=2 |
+| TC-A07 | 新增多条 module_patterns | module_patterns=["auth/*", "src/*"] | len(module_patterns)=2 |
 | TC-A08 | 新增后立即查询 | add 后 get_bug_detail | 返回完整记录 |
 
 ---
@@ -66,7 +66,7 @@
 |---------|-----------|------|------|
 | TC-C01 | 删除存在记录 | delete_bug(id) | status='invalid'，数据仍存在 |
 | TC-C02 | 删除不存在 | delete_bug(9999) | 静默返回 |
-| TC-C03 | 删除后 cascade | delete 后 recall/search | 软删除后仍可召回（status='invalid'） |
+| TC-C03 | 删除后 cascade | delete 后搜索 | 软删除后仍可搜索（status='invalid'） |
 
 > **注意**：`delete_bug` 是软删除，不会真正删除数据。数据仍可通过 `get_bug_detail` 查询到（status='invalid'）。
 
@@ -82,13 +82,13 @@
 
 ---
 
-## TC-E01 ~ TC-E03：update_bug_paths / add_recall
+## TC-E01 ~ TC-E03：update_bug_paths / add_module_pattern
 
 | 用例编号 | 测试点描述 | 输入 | 预期 |
 |---------|-----------|------|------|
 | TC-E01 | 批量更新 paths | update_bug_paths(id, ["new/a.ts"]) | 替换旧 paths |
 | TC-E02 | 清空 paths | update_bug_paths(id, []) | paths=[] |
-| TC-E03 | 添加 recall | add_recall(id, "auth/*") | recalls 包含 auth/* |
+| TC-E03 | 添加 module_pattern | add_module_pattern(id, "auth/*") | module_patterns 包含 auth/* |
 
 ---
 
@@ -104,18 +104,16 @@
 
 ---
 
-## TC-H01 ~ TC-H08：recall_by_path / recall_by_pattern 路径召回
+## TC-H01 ~ TC-H06：recall_by_path / search_by_module_patterns 路径和模块搜索
 
 | 用例编号 | 测试点描述 | 输入 | 预期 |
 |---------|-----------|------|------|
-| TC-H01 | 精确路径召回 | recall_by_path("src/a.ts") | 召回相关 bug |
-| TC-H02 | 目录前缀召回 | paths=["src/auth/s.ts"] 查 "src/auth/l.ts" | 召回 |
-| TC-H03 | 不相关不召回 | api 问题不召回 auth | 无召回 |
-| TC-H04 | 只有 recalls | recalls=["auth/*"] 无 paths | 仍可召回 |
-| TC-H05 | 按分数排序 | 高分在前 | results[0] 最高分 |
-| TC-H06 | recall_by_pattern | 模式匹配 auth/* | 召回 |
-| TC-H07 | pattern 无匹配 | 查询不匹配的 pattern | 无召回 |
-| TC-H08 | 双向匹配 | 模块名 "auth" 匹配 "auth/*" | 召回 |
+| TC-H01 | 精确路径搜索 | recall_by_path("src/a.ts") | 搜索相关 bug |
+| TC-H02 | 目录前缀搜索 | paths=["src/auth/s.ts"] 查 "src/auth/s.ts" | 搜索 |
+| TC-H03 | 不相关不搜索 | api 问题不搜索 auth | 无搜索 |
+| TC-H04 | search_by_module_patterns 基本匹配 | 模式搜索 src/modules/* | 搜索 |
+| TC-H05 | 无 module_patterns 不被召回 | 查询无模式的 bug | 无搜索 |
+| TC-H06 | pattern 无匹配 | xyz/* 不匹配 auth/login.ts | 无搜索 |
 
 ---
 
@@ -138,7 +136,7 @@
 | TC-I01 | 查询存在的 bug | get_bug_detail(id) | 返回完整记录 |
 | TC-I02 | 查询不存在的 bug | get_bug_detail(9999) | 抛出 ValidationError |
 | TC-I03 | 详情包含 7 维分数 | 带 scores 创建 | len(scores)=7 |
-| TC-I04 | 详情包含关联数据 | tags/keywords/recalls | 各字段完整 |
+| TC-I04 | 详情包含关联数据 | tags/keywords/module_patterns | 各字段完整 |
 
 ---
 
@@ -175,27 +173,27 @@
 
 ## TC-M01 ~ TC-M05：影响关系管理
 
-| 用例编号 | 测试点描述 | 输入 | 预期 |
-|---------|-----------|------|------|
+| 用例编号   | 测试点描述 | 输入 | 预期 |
+|--------|-----------|------|------|
 | TC-M01 | 添加回归影响 | add_impact(..., impact_type="regression") | impact_id>0 |
 | TC-M02 | 添加副作用 | impact_type="side_effect" | impact_id>0 |
 | TC-M03 | 添加依赖 | impact_type="dependency" | impact_id>0 |
 | TC-M04 | 无效类型 | impact_type="invalid" | 抛出 ValidationError |
 | TC-M05 | 无效 severity | severity=15 | 抛出 ValidationError |
+| TC-M06 | prevention 自动累加 | add_impact(prevention_delta=5) | prevention+=5 |
 
 > **注意**：`add_impact` 参数为 `(source_bug_id, solution_change, impact_description, impact_type, severity, prevention_delta)`
 
 ---
 
-## TC-N01 ~ TC-N05：路径和 recalls 管理
+## TC-N01 ~ TC-N04：路径和 module_patterns 管理
 
 | 用例编号 | 测试点描述 | 输入 | 预期 |
 |---------|-----------|------|------|
 | TC-N01 | 批量更新 paths | update_bug_paths | paths 替换 |
-| TC-N02 | 添加 recall | add_recall | recalls 增加 |
-| TC-N03 | 批量更新 recalls | update_bug_recalls | recalls 替换 |
-| TC-N04 | 清空 recalls | update_bug_recalls([]) | recalls=[] |
-| TC-N05 | 更新后正确召回 | 更新 recall 后召回 | 新 pattern 有效 |
+| TC-N02 | 添加 module_pattern | add_module_pattern | module_patterns 增加 |
+| TC-N03 | 批量更新 module_patterns | update_bug_module_patterns | module_patterns 替换 |
+| TC-N04 | 清空 module_patterns | update_bug_module_patterns([]) | module_patterns=[] |
 
 ---
 
@@ -204,22 +202,21 @@
 | 用例编号 | 测试点描述 | 输入 | 预期 |
 |---------|-----------|------|------|
 | TC-O01 | 迁移 paths | migrate_bug_paths_after_refactor | 返回迁移的 bug_id 列表 |
-| TC-O02 | 迁移 recalls | migrate_bug_paths_after_refactor(通配符) | recalls 模式更新 |
+| TC-O02 | 迁移 module_patterns | migrate_bug_paths_after_refactor(通配符) | module_patterns 模式更新 |
 
 > **注意**：`migrate_bug_paths_after_refactor` 返回 `list[int]`，是被迁移的 bug_id 列表。
 
 ---
 
-## TC-P01 ~ TC-P04：路径检查
+## TC-P01 ~ TC-P03：路径检查
 
 | 用例编号 | 测试点描述 | 输入 | 预期 |
 |---------|-----------|------|------|
 | TC-P01 | paths 有效 | check_bug_paths(id) | 返回 [] |
 | TC-P02 | paths 无效 | paths=["不存在.ts"] | 返回无效路径列表 |
-| TC-P03 | recalls 无效 | recalls=["不存在/*"] | 返回无效路径列表 |
-| TC-P04 | prevention 自动累加 | add_impact(prevention_delta=5) | prevention+=5 |
+| TC-P03 | module_patterns 无效 | module_patterns=["不存在/*"] | 返回无效路径列表 |
 
----
+
 
 ## 执行指南
 
@@ -233,4 +230,3 @@ python -m pytest tests/test_backends.py -v
 ## 相关文档
 
 - [MCP Server E2E 测试](./mcp-server-e2e.md) - `tests/test_mcp_server_e2e.py`
-- [测试用例索引](./README.md)

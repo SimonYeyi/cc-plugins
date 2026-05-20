@@ -74,7 +74,7 @@ class MCPServer:
             
             # 2. get_bug_detail - 获取详情
             self._tool('get_bug_detail', '获取 bug 详情',
-                '获取 bug 的完整信息，包括 scores、paths、tags、recalls、impacts 等。\n\n'
+                '获取 bug 的完整信息，包括 scores、paths、tags、module_patterns、impacts 等。\n\n'
                 '触发场景：\n'
                 '- 需要获取 bug 的详细信息（如“bug #5 的解决方案是什么”）\n'
                 '- 需要查看 bug 的具体字段信息\n'),
@@ -128,12 +128,12 @@ class MCPServer:
                                         'add', 'update_fields', 'delete',
                                         'add_impacts', 'remove_impacts', 'replace_impacts',
                                         'add_paths', 'remove_paths', 'replace_paths',
-                                        'add_recalls', 'remove_recalls', 'replace_recalls',
+                                        'add_module_patterns', 'remove_module_patterns', 'replace_module_patterns',
                                         'add_keywords', 'remove_keywords', 'replace_keywords',
                                         'add_tags', 'remove_tags', 'replace_tags',
                                         'increment_scores', 'decrement_scores', 'replace_scores',
                                     ],
-                                    'description': '操作模式：add(新增)/update_fields(更新字段)/delete(删除)/add_impacts(添加影响)/remove_impacts(移除影响)/replace_impacts(替换影响)/add_paths(添加路径)/remove_paths(移除路径)/replace_paths(替换路径)/add_recalls(添加召回)/remove_recalls(移除召回)/replace_recalls(替换召回)/add_keywords(添加关键词)/remove_keywords(移除关键词)/replace_keywords(替换关键词)/add_tags(添加标签)/remove_tags(移除标签)/replace_tags(替换标签)/increment_scores(累加分数)/decrement_scores(扣减分数)/replace_scores(替换分数)'
+                                    'description': '操作模式：add(新增)/update_fields(更新字段)/delete(删除)/add_impacts(添加影响)/remove_impacts(移除影响)/replace_impacts(替换影响)/add_paths(添加路径)/remove_paths(移除路径)/replace_paths(替换路径)/add_module_patterns(添加模块)/remove_module_patterns(移除模块)/replace_module_patterns(替换模块)/add_keywords(添加关键词)/remove_keywords(移除关键词)/replace_keywords(替换关键词)/add_tags(添加标签)/remove_tags(移除标签)/replace_tags(替换标签)/increment_scores(累加分数)/decrement_scores(扣减分数)/replace_scores(替换分数)'
                                 },
                                 'title': {'type': 'string', 'description': '标题（add 模式必填）'},
                                 'phenomenon': {'type': 'string', 'description': '现象描述（add 模式必填）'},
@@ -174,7 +174,7 @@ class MCPServer:
                                     }
                                 },
 
-                                'recalls': {'type': 'array', 'items': {'type': 'string'}, 'description': '召回模式数组（add_recalls/remove_recalls/replace_recalls 模式必填）'},
+                                'module_patterns': {'type': 'array', 'items': {'type': 'string'}, 'description': '模块模式数组（add_module_patterns/remove_module_patterns/replace_module_patterns 模式必填）'},
 
                                 'keywords': {'type': 'array', 'items': {'type': 'string'}, 'description': '关键词数组（add_keywords/remove_keywords/replace_keywords 模式必填）'},
 

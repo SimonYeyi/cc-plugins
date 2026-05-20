@@ -23,7 +23,7 @@ class BugStorageBackend(ABC):
         paths: Optional[list[str]] = None,
         tags: Optional[list[str]] = None,
         keywords: Optional[list[str]] = None,
-        recalls: Optional[list[str]] = None,
+        module_patterns: Optional[list[str]] = None,
     ) -> tuple[Any, float]:
         """新增 bug，返回 (bug_id, score)"""
         pass
@@ -83,7 +83,7 @@ class BugStorageBackend(ABC):
         """累加分数"""
         pass
     
-    # -------------------- 路径和召回管理 --------------------
+    # -------------------- 路径和模块模式管理 --------------------
     
     @abstractmethod
     def update_bug_paths(self, bug_id: Any, new_paths: list[str]) -> None:
@@ -91,13 +91,13 @@ class BugStorageBackend(ABC):
         pass
     
     @abstractmethod
-    def update_bug_recalls(self, bug_id: Any, new_recalls: list[str]) -> None:
-        """批量更新召回模式"""
+    def update_bug_module_patterns(self, bug_id: Any, new_module_patterns: list[str]) -> None:
+        """批量更新模块模式"""
         pass
     
     @abstractmethod
-    def add_recall(self, bug_id: Any, pattern: str) -> None:
-        """添加召回模式"""
+    def add_module_pattern(self, bug_id: Any, pattern: str) -> None:
+        """添加模块模式"""
         pass
     
     # -------------------- 搜索功能 --------------------
@@ -157,8 +157,8 @@ class BugStorageBackend(ABC):
         pass
     
     @abstractmethod
-    def recall_by_pattern(self, pattern: str, limit: int = 10) -> list[dict[str, Any]]:
-        """按模式召回"""
+    def search_by_module_patterns(self, pattern: str, limit: int = 10) -> list[dict[str, Any]]:
+        """按模块模式搜索"""
         pass
 
     # -------------------- 影响关系 --------------------
@@ -174,11 +174,6 @@ class BugStorageBackend(ABC):
         prevention_delta: float = 3.0,
     ) -> Any:
         """添加影响关系，返回 impact_id"""
-        pass
-    
-    @abstractmethod
-    def update_impacted_paths(self, old_path: str, new_path: str) -> int:
-        """批量更新影响路径"""
         pass
     
     @abstractmethod
@@ -201,13 +196,8 @@ class BugStorageBackend(ABC):
         pass
     
     @abstractmethod
-    def check_path_valid(self, path: str, root: Optional[Any] = None) -> bool:
-        """检查路径有效性"""
-        pass
-
-    @abstractmethod
     def check_bug_paths(self, bug_id: Any) -> list[str]:
-        """检查 bug 的 paths/recalls/impacts 路径是否有效，返回无效路径列表"""
+        """检查 bug 的 paths/module_patterns/impacts 路径是否有效，返回无效路径列表"""
         pass
 
     @abstractmethod

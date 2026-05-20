@@ -97,7 +97,7 @@ class JSONLBackend(BugStorageBackend):
         self.keyword_index = defaultdict(list)
         self.path_index = defaultdict(list)
         self.tag_index = defaultdict(list)
-        self.recall_index = defaultdict(list)
+        self.module_pattern_index = defaultdict(list)
         self.impacts_index = defaultdict(list)
 
         # 反向索引：bug_id → {index_type: [keys...]}，用于 O(1) 清除索引
@@ -127,7 +127,7 @@ class JSONLBackend(BugStorageBackend):
         self.keyword_index.clear()
         self.path_index.clear()
         self.tag_index.clear()
-        self.recall_index.clear()
+        self.module_pattern_index.clear()
         self.impacts_index.clear()
         self._bug_index_refs.clear()
         
@@ -208,10 +208,10 @@ class JSONLBackend(BugStorageBackend):
             self.tag_index[key].append(bug_id)
             refs.setdefault('tag', []).append(key)
 
-        # Recall pattern 索引
-        for pattern in bug.get('recalls', []):
-            self.recall_index[pattern].append(bug_id)
-            refs.setdefault('recall', []).append(pattern)
+        # Module pattern 索引
+        for pattern in bug.get('module_patterns', []):
+            self.module_pattern_index[pattern].append(bug_id)
+            refs.setdefault('module_pattern', []).append(pattern)
 
         self._bug_index_refs[bug_id] = refs
 
@@ -236,7 +236,7 @@ class JSONLBackend(BugStorageBackend):
                 solution: Optional[str] = None, test_case: Optional[str] = None,
                 verified: bool = False, scores: Optional[dict[str, float]] = None,
                 paths: Optional[list[str]] = None, tags: Optional[list[str]] = None,
-                keywords: Optional[list[str]] = None, recalls: Optional[list[str]] = None,
+                keywords: Optional[list[str]] = None, module_patterns: Optional[list[str]] = None,
                 status: str = "active", verified_at: Optional[str] = None, verified_by: Optional[str] = None,
                 ) -> tuple[int, float]:
         # verified_by 校验：只能是 AI 或 User
@@ -267,7 +267,7 @@ class JSONLBackend(BugStorageBackend):
             "paths": list(paths) if paths else [],
             "tags": list(tags) if tags else [],
             "keywords": list(keywords) if keywords else [],
-            "recalls": list(recalls) if recalls else [],
+            "module_patterns": list(module_patterns) if module_patterns else [],
             "impacts": [],
             "created_at": now,
             "updated_at": now,
@@ -284,7 +284,7 @@ class JSONLBackend(BugStorageBackend):
                    solution: Optional[str] = None, test_case: Optional[str] = None,
                    status: Optional[str] = None, verified: Optional[bool] = None,
                    verified_at: Optional[str] = None, verified_by: Optional[str] = None,
-                   paths: Optional[list] = None, recalls: Optional[list] = None,
+                   paths: Optional[list] = None, module_patterns: Optional[list] = None,
                    scores: Optional[dict] = None, keywords: Optional[list] = None,
                    tags: Optional[list] = None, **kwargs) -> None:
         if status is not None and status not in ("active", "resolved", "invalid"):
@@ -334,11 +334,11 @@ class JSONLBackend(BugStorageBackend):
         if verified_by is not None:
             bug["verified_by"] = verified_by
         
-        # 更新 paths、recalls、scores、keywords、tags
+        # 更新 paths、module_patterns、scores、keywords、tags
         if paths is not None:
             bug["paths"] = paths
-        if recalls is not None:
-            bug["recalls"] = recalls
+        if module_patterns is not None:
+            bug["module_patterns"] = module_patterns
         if scores is not None:
             bug["scores"] = scores
         if keywords is not None:
@@ -419,24 +419,24 @@ class JSONLBackend(BugStorageBackend):
         bug["updated_at"] = datetime.now().isoformat()
         self._append_bug(bug)
     
-    def update_bug_recalls(self, bug_id: int, new_recalls: list[str]) -> None:
+    def update_bug_module_patterns(self, bug_id: int, new_module_patterns: list[str]) -> None:
         self._ensure_loaded()
         bug = self._bugs.get(bug_id)
         if not bug:
             raise ValidationError(f"Bug #{bug_id} 不存在")
         
-        bug["recalls"] = new_recalls
+        bug["module_patterns"] = new_module_patterns
         bug["updated_at"] = datetime.now().isoformat()
         self._append_bug(bug)
     
-    def add_recall(self, bug_id: int, pattern: str) -> None:
+    def add_module_pattern(self, bug_id: int, pattern: str) -> None:
         self._ensure_loaded()
         bug = self._bugs.get(bug_id)
         if not bug:
             raise ValidationError(f"Bug #{bug_id} 不存在")
         
-        if pattern not in bug.get("recalls", []):
-            bug.setdefault("recalls", []).append(pattern)
+        if pattern not in bug.get("module_patterns", []):
+            bug.setdefault("module_patterns", []).append(pattern)
             bug["updated_at"] = datetime.now().isoformat()
             self._append_bug(bug)
     
@@ -559,11 +559,6 @@ class JSONLBackend(BugStorageBackend):
             if match_path(file_path, path):
                 matched_ids.update(ids)
         
-        # Recall pattern 匹配
-        for pattern, ids in self.recall_index.items():
-            if match_path(file_path, pattern):
-                matched_ids.update(ids)
-        
         results = [
             self._bugs[bid]
             for bid in matched_ids
@@ -589,16 +584,16 @@ class JSONLBackend(BugStorageBackend):
             })
         return result_list
 
-    def recall_by_pattern(self, pattern: str, limit: int = RECALL_LIMIT) -> list[dict[str, Any]]:
+    def search_by_module_patterns(self, pattern: str, limit: int = RECALL_LIMIT) -> list[dict[str, Any]]:
         self._ensure_loaded()
         pattern_norm = normalize_path(pattern)
         matched_ids = set()
         
-        for stored_pattern, ids in self.recall_index.items():
+        for stored_pattern, ids in self.module_pattern_index.items():
             if (match_path(pattern_norm, stored_pattern) or
                 match_path(stored_pattern, pattern_norm)):
                 matched_ids.update(ids)
-        
+
         results = [
             self._bugs[bid]
             for bid in matched_ids
@@ -710,10 +705,6 @@ class JSONLBackend(BugStorageBackend):
         removed_count = original_count - written_count
         return max(0, removed_count)
 
-    def update_impacted_paths(self, old_path: str, new_path: str) -> int:
-        """此方法已废弃：impacts 不再存储路径信息"""
-        return 0
-
     # =========================================================================
     # 高级功能
     # =========================================================================
@@ -757,7 +748,7 @@ class JSONLBackend(BugStorageBackend):
             })
         return result_list
     
-    def check_path_valid(self, path: str, root: Optional[Path] = None) -> bool:
+    def _check_path_valid(self, path: str, root: Optional[Path] = None) -> bool:
         root = root or find_project_root()
         if path.endswith("/*"):
             # 通配符路径：去掉 /* 检查目录是否存在
@@ -767,7 +758,7 @@ class JSONLBackend(BugStorageBackend):
         return abs_path.exists()
     
     def check_bug_paths(self, bug_id: int) -> list[str]:
-        """检查 bug 的 paths/recalls 路径是否有效，返回无效路径列表"""
+        """检查 bug 的 paths/module_patterns 路径是否有效，返回无效路径列表"""
         self._ensure_loaded()
         bug = self._bugs.get(bug_id)
         if not bug:
@@ -775,81 +766,87 @@ class JSONLBackend(BugStorageBackend):
 
         invalid_paths = []
 
-        # 检查 paths 和 recalls
-        for path in bug.get("paths", []) + bug.get("recalls", []):
+        # 检查 paths 和 module_patterns
+        for path in bug.get("paths", []) + bug.get("module_patterns", []):
             # paths 可能是字符串或对象格式
             if isinstance(path, dict):
                 path_str = path.get('file', '')
             else:
                 path_str = path
             
-            if not self.check_path_valid(path_str):
+            if not self._check_path_valid(path_str):
                 invalid_paths.append(path_str)
 
         return invalid_paths
 
     def migrate_bug_paths_after_refactor(self, old_path: str, new_path: str) -> list[int]:
-        """路径迁移：只处理 paths 和 recalls，impacts 不再存储路径"""
+        """路径迁移：只处理 paths 和 module_patterns，impacts 不再存储路径"""
         migrated_bugs = []
 
+        # 通过 paths 匹配
         affected_bugs = self.recall_by_path(old_path)
 
-        for bug_summary in affected_bugs:
+        # 也通过 module_patterns 匹配（用户搜索用的模式）
+        pattern_bugs = self.search_by_module_patterns(old_path)
+
+        # 合并结果（按 id 去重）
+        seen_ids = set()
+        for bug_summary in affected_bugs + pattern_bugs:
             bug_id = bug_summary["id"]
-            bug = self._bugs.get(bug_id)
-            if not bug:
-                continue
+            if bug_id not in seen_ids:
+                seen_ids.add(bug_id)
+                bug = self._bugs.get(bug_id)
+                if bug:
+                    updated = False
+                    old_path_norm = normalize_path(old_path)
+                    new_path_norm = normalize_path(new_path)
 
-            updated = False
-            old_path_norm = normalize_path(old_path)
-            new_path_norm = normalize_path(new_path)
-
-            # 更新 paths（支持字符串和对象两种格式）
-            current_paths = bug.get("paths", [])
-            new_paths = []
-            for p in current_paths:
-                if isinstance(p, dict):
-                    path_file = p.get('file', '')
-                else:
-                    path_file = p
-
-                if path_file == old_path_norm:
-                    # 替换为新路径
-                    if isinstance(p, dict):
-                        new_paths.append({
-                            'file': new_path_norm,
-                            'functions': p.get('functions', [])
-                        })
-                    else:
-                        new_paths.append(new_path_norm)
-                    updated = True
-                else:
-                    new_paths.append(p)
-
-            if updated:
-                bug["paths"] = new_paths
-
-            # 更新 recalls
-            current_recalls = bug.get("recalls", [])
-            matched_recalls = [r for r in current_recalls if match_path(old_path_norm, r)]
-            if matched_recalls:
-                updated_recalls = []
-                for r in current_recalls:
-                    if r in matched_recalls:
-                        if r.endswith("/*"):
-                            base_dir = "/".join(new_path_norm.split("/")[:-1])
-                            updated_recalls.append(f"{base_dir}/*")
+                    # 更新 paths（支持字符串和对象两种格式）
+                    current_paths = bug.get("paths", [])
+                    new_paths = []
+                    for p in current_paths:
+                        if isinstance(p, dict):
+                            path_file = p.get('file', '')
                         else:
-                            updated_recalls.append(new_path_norm)
-                    else:
-                        updated_recalls.append(r)
-                bug["recalls"] = updated_recalls
-                updated = True
+                            path_file = p
 
-            if updated:
-                bug["updated_at"] = datetime.now().isoformat()
-                self._append_bug(bug)
-                migrated_bugs.append(bug_id)
+                        if path_file == old_path_norm:
+                            # 替换为新路径
+                            if isinstance(p, dict):
+                                new_paths.append({
+                                    'file': new_path_norm,
+                                    'functions': p.get('functions', [])
+                                })
+                            else:
+                                new_paths.append(new_path_norm)
+                            updated = True
+                        else:
+                            new_paths.append(p)
+
+                    if updated:
+                        bug["paths"] = new_paths
+
+                    # 更新 module_patterns
+                    current_module_patterns = bug.get("module_patterns", [])
+                    matched_module_patterns = [r for r in current_module_patterns if match_path(old_path_norm, r)]
+                    if matched_module_patterns:
+                        updated_module_patterns = []
+                        for r in current_module_patterns:
+                            if r in matched_module_patterns:
+                                if r.endswith("/*"):
+                                    base_dir = "/".join(new_path_norm.split("/")[:-1])
+                                    updated_module_patterns.append(f"{base_dir}/*")
+                                else:
+                                    updated_module_patterns.append(new_path_norm)
+                            else:
+                                updated_module_patterns.append(r)
+                        bug["module_patterns"] = updated_module_patterns
+                        updated = True
+
+                    if updated:
+                        bug["updated_at"] = datetime.now().isoformat()
+                        self._append_bug(bug)
+                        migrated_bugs.append(bug_id)
 
         return list(set(migrated_bugs))
     
@@ -1039,24 +1036,24 @@ class JSONLBackend(BugStorageBackend):
                         return {'error': "❌ 错误：replace_paths 模式必须传 paths", 'isError': True}
                     self.update_bug(bug_id, paths=kwargs['paths'])
                 
-                elif mode == 'add_recalls':
-                    if 'recalls' not in kwargs:
-                        return {'error': "❌ 错误：add_recalls 模式必须传 recalls", 'isError': True}
+                elif mode == 'add_module_patterns':
+                    if 'module_patterns' not in kwargs:
+                        return {'error': "❌ 错误：add_module_patterns 模式必须传 module_patterns", 'isError': True}
                     old_bug = self.get_bug_detail(bug_id)
-                    merged_recalls = list(set((old_bug.get('recalls') or []) + kwargs['recalls']))
-                    self.update_bug(bug_id, recalls=merged_recalls)
+                    merged_module_patterns = list(set((old_bug.get('module_patterns') or []) + kwargs['module_patterns']))
+                    self.update_bug(bug_id, module_patterns=merged_module_patterns)
                 
-                elif mode == 'remove_recalls':
-                    if 'recalls' not in kwargs:
-                        return {'error': "❌ 错误：remove_recalls 模式必须传 recalls", 'isError': True}
+                elif mode == 'remove_module_patterns':
+                    if 'module_patterns' not in kwargs:
+                        return {'error': "❌ 错误：remove_module_patterns 模式必须传 module_patterns", 'isError': True}
                     old_bug = self.get_bug_detail(bug_id)
-                    filtered_recalls = [r for r in (old_bug.get('recalls') or []) if r not in kwargs['recalls']]
-                    self.update_bug(bug_id, recalls=filtered_recalls)
+                    filtered_module_patterns = [r for r in (old_bug.get('module_patterns') or []) if r not in kwargs['module_patterns']]
+                    self.update_bug(bug_id, module_patterns=filtered_module_patterns)
                 
-                elif mode == 'replace_recalls':
-                    if 'recalls' not in kwargs:
-                        return {'error': "❌ 错误：replace_recalls 模式必须传 recalls", 'isError': True}
-                    self.update_bug(bug_id, recalls=kwargs['recalls'])
+                elif mode == 'replace_module_patterns':
+                    if 'module_patterns' not in kwargs:
+                        return {'error': "❌ 错误：replace_module_patterns 模式必须传 module_patterns", 'isError': True}
+                    self.update_bug(bug_id, module_patterns=kwargs['module_patterns'])
                 
                 elif mode == 'add_keywords':
                     if 'keywords' not in kwargs:
@@ -1153,7 +1150,7 @@ class JSONLBackend(BugStorageBackend):
                 limit=limit + offset
             )
         elif mode == 'module':
-            bugs = self.recall_by_pattern(kwargs['pattern'], limit=limit + offset)
+            bugs = self.search_by_module_patterns(kwargs['pattern'], limit=limit + offset)
         else:
             raise ValueError(f"Unknown search mode: {mode}")
         

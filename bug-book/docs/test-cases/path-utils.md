@@ -150,10 +150,10 @@ python -m pytest tests/test_path_utils.py -v -k "real_scenario"
 
 ## 与后端测试的关系
 
-`test_backends.py` 中的召回测试（TC-H01~TC-H09）会调用后端的 `recall_by_path()` 和 `recall_by_pattern()` 方法，这些方法内部使用 `path_utils.match_path()`。因此：
+`test_backends.py` 中的搜索测试（TC-H01~TC-H06）会调用后端的 `recall_by_path()` 和 `search_by_module_patterns()` 方法，这些方法内部使用 `path_utils.match_path()`。因此：
 
 - **`test_path_utils.py`**：测试底层的匹配算法
-- **`test_backends.py`**：测试完整的召回流程（包括数据库查询 + 路径匹配）
+- **`test_backends.py`**：测试完整的搜索流程（包括数据库查询 + 路径匹配）
 
 两者互补，确保从底层算法到上层 API 都有充分测试。
 
@@ -161,7 +161,6 @@ python -m pytest tests/test_path_utils.py -v -k "real_scenario"
 
 ## 相关文档
 
-- [后端双实现测试](./backends.md) - `tests/test_backends.py`
+- [后端单元测试](./backends.md) - `tests/test_backends.py`
 - [元数据存储测试](./metadata-store.md) - `tests/test_metadata_store.py`
 - [MCP Server 端到端测试](./mcp-server-e2e.md) - `tests/test_mcp_server_e2e.py`
-- [测试用例索引](./README.md) - 所有测试文档的索引

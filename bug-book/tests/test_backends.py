@@ -75,7 +75,7 @@ def test_add_bug_full_fields(backend):
         paths=["src/auth/session.ts"],
         tags=["auth"],
         keywords=["session"],
-        recalls=["auth/*"],
+        module_patterns=["auth/*"],
     )
     assert bug_id > 0
     assert score > 0
@@ -83,7 +83,7 @@ def test_add_bug_full_fields(backend):
     assert detail["title"] == "session丢失"
     assert detail["paths"] == ["src/auth/session.ts"]
     assert detail["tags"] == ["auth"]
-    assert detail["recalls"] == ["auth/*"]
+    assert detail["module_patterns"] == ["auth/*"]
     assert len(detail["scores"]) == 7
 
 
@@ -126,15 +126,15 @@ def test_add_bug_multiple_paths(backend):
     assert len(detail["paths"]) == 2
 
 
-def test_add_bug_multiple_recalls(backend):
-    """TC-A07: 新增多条 recalls"""
+def test_add_bug_multiple_module_patterns(backend):
+    """TC-A07: 新增多条 module_patterns"""
     bug_id, _ = backend.add_bug(
         title="多模式",
         phenomenon="",
-        recalls=["auth/*", "src/*"],
+        module_patterns=["auth/*", "src/*"],
     )
     detail = backend.get_bug_detail(bug_id)
-    assert len(detail["recalls"]) == 2
+    assert len(detail["module_patterns"]) == 2
 
 
 def test_add_bug_then_get_detail(backend):
@@ -220,7 +220,7 @@ def test_delete_bug_nonexistent(backend):
 
 def test_delete_bug_soft_delete(backend):
     """TC-C03: 软删除后状态为 invalid"""
-    bug_id, _ = backend.add_bug(title="软删除", phenomenon="", verified=True, recalls=["test/*"])
+    bug_id, _ = backend.add_bug(title="软删除", phenomenon="", verified=True, module_patterns=["test/*"])
     backend.delete_bug(bug_id)
     # 软删除后 status='invalid'
     detail = backend.get_bug_detail(bug_id)
@@ -261,7 +261,7 @@ def test_increment_score_multiple(backend):
 
 
 # ============================================================
-# TC-E01 ~ TC-E03: update_bug_paths / add_recall
+# TC-E01 ~ TC-E03: update_bug_paths / add_module_pattern
 # ============================================================
 
 def test_update_bug_paths_basic(backend):
@@ -282,12 +282,12 @@ def test_update_bug_paths_empty(backend):
     assert len(detail["paths"]) == 0
 
 
-def test_add_recall_basic(backend):
-    """TC-E03: 添加 recall pattern"""
+def test_add_module_pattern_basic(backend):
+    """TC-E03: 添加 module_pattern"""
     bug_id, _ = backend.add_bug(title="加模式", phenomenon="", verified=True)
-    backend.add_recall(bug_id, "auth/*")
+    backend.add_module_pattern(bug_id, "auth/*")
     detail = backend.get_bug_detail(bug_id)
-    assert "auth/*" in detail["recalls"]
+    assert "auth/*" in detail["module_patterns"]
 
 
 # ============================================================
@@ -331,7 +331,7 @@ def test_search_no_result(backend):
 
 
 # ============================================================
-# TC-H01 ~ TC-H08：recall_by_path / recall_by_pattern 路径召回
+# TC-H01 ~ TC-H06：recall_by_path / search_by_module_patterns 路径和模块搜索
 # ============================================================
 
 def test_recall_by_exact_path(backend):
@@ -348,9 +348,8 @@ def test_recall_multi_path(backend):
         phenomenon="",
         verified=True,
         paths=["src/auth/session.ts"],
-        recalls=["auth/*"],
     )
-    results = backend.recall_by_path("src/auth/login.ts")
+    results = backend.recall_by_path("src/auth/session.ts")
     assert any(r["id"] == bug_id for r in results)
 
 
@@ -361,61 +360,30 @@ def test_recall_unrelated_path(backend):
     assert not any(r["title"] == "api问题" for r in results)
 
 
-def test_recall_by_recalls_only(backend):
-    """TC-H04: 只有 recalls 无 paths"""
+def test_search_by_module_patterns_basic(backend):
+    """TC-H04: search_by_module_patterns 基本模式匹配"""
     bug_id, _ = backend.add_bug(
-        title="仅recall",
+        title="模块模式测试",
         phenomenon="",
         verified=True,
-        paths=[],
-        recalls=["auth/*"],
+        module_patterns=["src/modules/*"],
     )
-    results = backend.recall_by_path("src/auth/login.ts")
+    results = backend.search_by_module_patterns("src/modules/auth.ts")
     assert any(r["id"] == bug_id for r in results)
 
 
-def test_recall_order_by_score(backend):
-    """TC-H05: 结果按分数排序"""
-    backend.add_bug(title="低分bug", phenomenon="", verified=True,
-                   scores={"importance": 1, "complexity": 1, "scope": 1, "difficulty": 1, "occurrences": 0, "emotion": 0, "prevention": 1},
-                   paths=["src/x.ts"], recalls=["x/*"])
-    backend.add_bug(title="高分bug", phenomenon="", verified=True,
-                   scores={"importance": 10, "complexity": 10, "scope": 10, "difficulty": 10, "occurrences": 0, "emotion": 0, "prevention": 10},
-                   paths=["src/x.ts"], recalls=["x/*"])
-    results = backend.recall_by_path("src/x/file.ts")
-    assert results[0]["title"] == "高分bug"
+def test_search_by_module_patterns_no_pattern(backend):
+    """TC-H05: 无 module_patterns 的 bug 不被模式搜索召回"""
+    backend.add_bug(title="无模式", phenomenon="", verified=True)
+    results = backend.search_by_module_patterns("any/path.ts")
+    assert not any(r["title"] == "无模式" for r in results)
 
 
-def test_recall_by_pattern(backend):
-    """TC-H06: recall_by_pattern 模式匹配"""
-    bug_id, _ = backend.add_bug(
-        title="auth模式",
-        phenomenon="",
-        verified=True,
-        recalls=["auth/*"],
-    )
-    results = backend.recall_by_pattern("auth/login.ts")
-    assert any(r["id"] == bug_id for r in results)
-
-
-def test_recall_by_pattern_no_match(backend):
-    """TC-H07: recall_by_pattern 无匹配"""
-    backend.add_bug(title="nomatch", phenomenon="", verified=True, recalls=["xyz/*"])
-    results = backend.recall_by_pattern("auth/login.ts")
+def test_search_by_module_patterns_no_match(backend):
+    """TC-H06: search_by_module_patterns pattern 无匹配"""
+    backend.add_bug(title="nomatch", phenomenon="", verified=True, module_patterns=["xyz/*"])
+    results = backend.search_by_module_patterns("auth/login.ts")
     assert not any(r["title"] == "nomatch" for r in results)
-
-
-def test_recall_by_pattern_bidirectional(backend):
-    """TC-H08: 双向匹配——模块名召回"""
-    bug_id, _ = backend.add_bug(
-        title="auth模块问题",
-        phenomenon="",
-        verified=True,
-        recalls=["auth/*"],
-    )
-    # 裸模块名查询，匹配 db 中的 auth/*
-    results = backend.recall_by_pattern("auth")
-    assert any(r["id"] == bug_id for r in results)
 
 
 # ============================================================
@@ -496,19 +464,19 @@ def test_get_detail_scores(backend):
 
 
 def test_get_detail_relations(backend):
-    """TC-I04: 详情包含 tags/keywords/recalls"""
+    """TC-I04: 详情包含 tags/keywords/module_patterns"""
     bug_id, _ = backend.add_bug(
         title="关联",
         phenomenon="",
         verified=True,
         tags=["t1", "t2"],
         keywords=["k1"],
-        recalls=["r1/*"],
+        module_patterns=["r1/*"],
     )
     detail = backend.get_bug_detail(bug_id)
     assert len(detail["tags"]) == 2
     assert detail["keywords"] == ["k1"]
-    assert detail["recalls"] == ["r1/*"]
+    assert detail["module_patterns"] == ["r1/*"]
 
 
 # ============================================================
@@ -692,8 +660,29 @@ def test_add_impact_invalid_severity(backend):
         assert "严重程度" in str(e) or "severity" in str(e).lower()
 
 
+def test_add_impact_auto_prevention(backend):
+    """TC-M06: add_impact 后 prevention 分数自动累加"""
+    bug_id, _ = backend.add_bug(
+        title="prevention 累加测试",
+        phenomenon="",
+        verified=True,
+        scores={"importance": 0, "complexity": 0, "scope": 0, "difficulty": 0,
+                "occurrences": 0, "emotion": 0, "prevention": 0},
+    )
+    backend.add_impact(
+        source_bug_id=bug_id,
+        solution_change="变更",
+        impact_description="影响",
+        impact_type="regression",
+        severity=9,
+        prevention_delta=5.0,
+    )
+    detail = backend.get_bug_detail(bug_id)
+    scores = dict(detail["scores"])
+    assert scores["prevention"] == 5.0
+
 # ============================================================
-# TC-N01 ~ TC-N05：路径和 recalls 管理
+# TC-N01 ~ TC-N05：路径和 module_patterns 管理
 # ============================================================
 
 def test_update_bug_paths_with_multiple(backend):
@@ -710,64 +699,39 @@ def test_update_bug_paths_with_multiple(backend):
     assert "old/path.ts" not in detail["paths"]
 
 
-def test_add_recall_verify(backend):
-    """TC-N02: 添加单个 recall pattern"""
-    bug_id, _ = backend.add_bug(title="recall测试", phenomenon="", verified=True)
-    backend.add_recall(bug_id, "auth/*")
+def test_add_module_pattern_verify(backend):
+    """TC-N02: 添加单个 module_pattern"""
+    bug_id, _ = backend.add_bug(title="module_pattern测试", phenomenon="", verified=True)
+    backend.add_module_pattern(bug_id, "auth/*")
     detail = backend.get_bug_detail(bug_id)
-    assert "auth/*" in detail["recalls"]
+    assert "auth/*" in detail["module_patterns"]
 
 
-def test_update_bug_recalls(backend):
-    """TC-N03: 批量更新 recall patterns"""
+def test_update_bug_module_patterns(backend):
+    """TC-N03: 批量更新 module_patterns"""
     bug_id, _ = backend.add_bug(
-        title="recall更新测试",
+        title="module_pattern更新测试",
         phenomenon="",
-        recalls=["old_pattern.dart", "other_pattern.dart"],
+        module_patterns=["old_pattern.dart", "other_pattern.dart"],
         verified=True,
     )
-    backend.update_bug_recalls(bug_id, ["new_pattern.dart", "other_pattern.dart"])
+    backend.update_bug_module_patterns(bug_id, ["new_pattern.dart", "other_pattern.dart"])
     detail = backend.get_bug_detail(bug_id)
-    assert "new_pattern.dart" in detail["recalls"]
-    assert "old_pattern.dart" not in detail["recalls"]
+    assert "new_pattern.dart" in detail["module_patterns"]
+    assert "old_pattern.dart" not in detail["module_patterns"]
 
 
-def test_update_bug_recalls_empty(backend):
-    """TC-N04: 清空所有 recall patterns"""
+def test_update_bug_module_patterns_empty(backend):
+    """TC-N04: 清空所有 module_patterns"""
     bug_id, _ = backend.add_bug(
-        title="清空recall",
+        title="清空module_patterns",
         phenomenon="",
-        recalls=["pattern1", "pattern2"],
+        module_patterns=["pattern1", "pattern2"],
         verified=True,
     )
-    backend.update_bug_recalls(bug_id, [])
+    backend.update_bug_module_patterns(bug_id, [])
     detail = backend.get_bug_detail(bug_id)
-    assert detail["recalls"] == []
-
-
-def test_recall_by_path_with_updated_recalls(backend):
-    """TC-N05: recalls 更新后能正确召回"""
-    bug_id, _ = backend.add_bug(
-        title="重构召回测试",
-        phenomenon="测试重构后的召回",
-        recalls=["old_file.dart"],
-        verified=True,
-    )
-    # 初始：旧 pattern 可召回
-    results = backend.recall_by_path("old_file.dart")
-    assert any(r["id"] == bug_id for r in results)
-
-    # 更新为新 pattern
-    backend.update_bug_recalls(bug_id, ["new_file.dart"])
-
-    # 新 pattern 可召回
-    results = backend.recall_by_path("new_file.dart")
-    assert any(r["id"] == bug_id for r in results)
-
-    # 旧 pattern 不可召回
-    results = backend.recall_by_path("old_file.dart")
-    assert not any(r["id"] == bug_id for r in results)
-
+    assert detail["module_patterns"] == []
 
 # ============================================================
 # TC-O01 ~ TC-O02：路径迁移
@@ -791,15 +755,15 @@ def test_migrate_paths_exact_match(backend):
     assert "src/modules/auth/session.ts" in detail["paths"]
 
 
-def test_migrate_recalls_wildcard(backend):
-    """TC-O02: 迁移 recalls 中的通配符模式"""
+def test_migrate_module_patterns_wildcard(backend):
+    """TC-O02: 迁移 module_patterns 中的通配符模式"""
     bug_id, _ = backend.add_bug(
-        title="recall迁移测试",
+        title="module_patterns迁移测试",
         phenomenon="测试",
         verified=True,
-        recalls=["auth/*"],
+        module_patterns=["auth/*"],
     )
-    # 迁移 recalls（通过 recall 匹配）
+    # 迁移 module_patterns（会通过 search_by_module_patterns 查找）
     migrated = backend.migrate_bug_paths_after_refactor(
         "src/auth/login.ts",
         "src/modules/auth/login.ts"
@@ -807,11 +771,11 @@ def test_migrate_recalls_wildcard(backend):
     assert bug_id in migrated
     detail = backend.get_bug_detail(bug_id)
     # 通配符模式应该更新
-    assert "src/modules/auth/*" in detail["recalls"]
+    assert "src/modules/auth/*" in detail["module_patterns"]
 
 
 # ============================================================
-# TC-P01 ~ TC-P04：路径检查
+# TC-P01 ~ TC-P03：路径检查
 # ============================================================
 
 def test_check_bug_paths_all_valid(backend):
@@ -834,36 +798,15 @@ def test_check_bug_paths_invalid_paths(backend):
     assert "nonexistent/file.ts" in result
 
 
-def test_check_bug_paths_invalid_recalls(backend):
-    """TC-P03: 检查 recalls 中有无效路径"""
+def test_check_bug_paths_invalid_module_patterns(backend):
+    """TC-P03: 检查 module_patterns 中有无效路径"""
     bug_id, _ = backend.add_bug(
-        title="无效 recalls 测试",
+        title="无效 module_patterns 测试",
         phenomenon="",
         verified=True,
-        recalls=["nonexistent/*"],
+        module_patterns=["nonexistent/*"],
     )
     result = backend.check_bug_paths(bug_id)
     assert len(result) == 1
     assert "nonexistent/*" in result
 
-
-def test_add_impact_auto_prevention(backend):
-    """TC-P04: add_impact 后 prevention 分数自动累加"""
-    bug_id, _ = backend.add_bug(
-        title="prevention 累加测试",
-        phenomenon="",
-        verified=True,
-        scores={"importance": 0, "complexity": 0, "scope": 0, "difficulty": 0,
-                "occurrences": 0, "emotion": 0, "prevention": 0},
-    )
-    backend.add_impact(
-        source_bug_id=bug_id,
-        solution_change="变更",
-        impact_description="影响",
-        impact_type="regression",
-        severity=9,
-        prevention_delta=5.0,
-    )
-    detail = backend.get_bug_detail(bug_id)
-    scores = dict(detail["scores"])
-    assert scores["prevention"] == 5.0

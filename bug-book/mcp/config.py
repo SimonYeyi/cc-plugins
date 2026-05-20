@@ -9,4 +9,4 @@ def find_project_root() -> Path:
 
 def get_data_dir() -> Path:
     """获取数据存储目录"""
-    return find_project_root() / "bug-book-data"
+    return find_project_root()

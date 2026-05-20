@@ -292,65 +292,15 @@ class MCPServer:
             }
 
         # 2. 调用后端召回（使用相对路径）
-        result = self.backend.recall_by_path_full(rel_file, limit=limit)
+        related_bugs = self.backend.recall_by_path(rel_file, limit=limit)
 
-        related = result.get("related_bugs", [])
-        impacted = result.get("impacted_by", [])
-        all_bugs = related + impacted
-        if not all_bugs:
-            return {
-                "content": [{"type": "text", "text": rel_file + " 文件下还没出现过 Bug" }]
-            }
-
-        # 3. 格式化输出，在 content 中写入标记供后续检查
-        message = f"📋 相关 Bug 召回（{len(all_bugs)}条）：\n\n"
-        for bug in all_bugs:
-            message += f"**Bug #{bug['id']}**: {bug['title']}\n"
-            message += f"- Score: {bug['score']}\n"
-            message += f"- Status: {bug.get('status', 'unknown')}\n"
-            
-            # 添加 paths 及 functions（bug 出现位置）
-            paths = bug.get('paths', [])
-            if paths:
-                message += "- Bug Location:\n"
-                for p in paths:
-                    if isinstance(p, dict):
-                        file_path = p.get('file', '')
-                        functions = p.get('functions', [])
-                        if functions:
-                            for func in functions:
-                                message += f"  - {file_path}::{func}\n"
-                        else:
-                            message += f"  - {file_path}\n"
-                    else:
-                        message += f"  - {p}\n"
-            
-            phenomenon = bug.get('phenomenon', '') or ''
-            if phenomenon:
-                message += f"- Phenomenon: {phenomenon[:150]}\n"
-            root_cause = bug.get('root_cause', '') or ''
-            if root_cause:
-                message += f"- Root Cause: {root_cause[:150]}\n"
-            solution = bug.get('solution', '') or ''
-            if solution:
-                message += f"- Solution: {solution[:150]}\n"
-            
-            # 添加测试用例
-            test_cases = bug.get('test_cases', [])
-            if test_cases:
-                message += "- Test Cases:\n"
-                for tc in test_cases:
-                    message += f"  - {tc}\n"
-            
-            message += "\n"
-
-        recall_tag = "已召回 " + str(len(all_bugs)) + " 个相关 bug [recall " + rel_file + "]"
+        recall_tag = "已召回 " + str(len(related_bugs)) + " 个相关 bug [recall " + rel_file + "]"
         return {
             "content": [{"type": "text", "text": json.dumps({
                 "systemMessage": recall_tag,
                 "hookSpecificOutput": {
                     "hookEventName": "PostToolUse",
-                    "additionalContext": message
+                    "additionalContext": json.dumps(related_bugs, ensure_ascii=False)
                 }
             }, ensure_ascii=False)}]
         }

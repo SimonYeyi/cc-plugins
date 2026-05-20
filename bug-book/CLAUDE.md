@@ -21,7 +21,7 @@
    - MCP Server → `docs/test-cases/mcp-server-e2e.md`
 
 2. **再**：在对应的测试文件中实现测试代码，用例编号与文档一致
-   - `tests/test_backends.py` - 后端双实现测试（SQLite + JSONL）
+   - `tests/test_backends.py` - 后端单元测试（JSONL）
    - `tests/test_path_utils.py` - 路径匹配工具测试
    - `tests/test_metadata_store.py` - 元数据存储测试
    - `tests/test_mcp_server_e2e.py` - MCP Server 端到端测试

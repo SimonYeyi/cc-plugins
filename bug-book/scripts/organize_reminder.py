@@ -17,12 +17,7 @@ def main():
 
     if result["should_remind"]:
         # 长期未整理 - 提醒但不强制
-        message = (
-            f"📋 Bug-Book 整理提醒：{result['message']}\n"
-            f"上次整理时间: {result['last_organize_time']}\n"
-            f"距今天数: {result['days_since']} 天\n"
-            "建议操作: 运行 /bug-organize 开始整理"
-        )
+        message = f"📋 Bug-Book 已有 {result['days_since']} 天未整理。如需整理，请输入：整理bug-book"
 
         # 输出 systemMessage JSON 格式
         print(json.dumps({"systemMessage": message}))

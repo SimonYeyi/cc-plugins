@@ -79,10 +79,6 @@ def _calc_score(scores_dict: dict[str, float]) -> float:
     return sum(DEFAULT_WEIGHTS.get(d, 1.0) * v for d, v in scores_dict.items())
 
 
-def _normalize_path(path: str) -> str:
-    """规范化路径（委托给 path_utils）"""
-    return normalize_path(path)
-
 class ValidationError(Exception):
     """校验失败"""
     pass
@@ -216,9 +212,6 @@ class JSONLBackend(BugStorageBackend):
         for pattern in bug.get('recalls', []):
             self.recall_index[pattern].append(bug_id)
             refs.setdefault('recall', []).append(pattern)
-
-        # 注意：impacts 不再存储路径信息，因此不构建 impacts_index
-        # get_impacted_bugs() 功能已废弃
 
         self._bug_index_refs[bug_id] = refs
 
@@ -516,14 +509,15 @@ class JSONLBackend(BugStorageBackend):
         results.sort(key=lambda x: x.get('score', 0), reverse=True)
         return results[:limit]
     
-    def search_recent_unverified(self, days: int = 7, limit: int = SEARCH_LIMIT) -> list[dict[str, Any]]:
+    def search_recent_unverified(self, days: int = SEARCH_LIMIT, limit: int = SEARCH_LIMIT) -> list[dict[str, Any]]:
         self._ensure_loaded()
         cutoff = datetime.now().timestamp() - (days * 86400)
         cutoff_iso = datetime.fromtimestamp(cutoff).isoformat()
-        
+
         results = [
             b for b in self._bugs.values()
             if (b.get('status') != 'invalid' and
+                not b.get('verified', False) and
                 b.get('created_at', '') >= cutoff_iso)
         ]
         results.sort(key=lambda x: x.get('score', 0), reverse=True)
@@ -557,7 +551,7 @@ class JSONLBackend(BugStorageBackend):
     # =========================================================================
     def recall_by_path(self, file_path: str, limit: int = RECALL_LIMIT) -> list[dict[str, Any]]:
         self._ensure_loaded()
-        file_path = _normalize_path(file_path)
+        file_path = normalize_path(file_path)
         matched_ids = set()
         
         # 路径索引匹配
@@ -590,12 +584,14 @@ class JSONLBackend(BugStorageBackend):
                 "root_cause": bug.get("root_cause"),
                 "solution": bug.get("solution"),
                 "test_case": bug.get("test_case"),
+                "paths": bug.get("paths", []),
+                "impacts": bug.get("impacts", []),
             })
         return result_list
-    
+
     def recall_by_pattern(self, pattern: str, limit: int = RECALL_LIMIT) -> list[dict[str, Any]]:
         self._ensure_loaded()
-        pattern_norm = _normalize_path(pattern)
+        pattern_norm = normalize_path(pattern)
         matched_ids = set()
         
         for stored_pattern, ids in self.recall_index.items():
@@ -622,19 +618,11 @@ class JSONLBackend(BugStorageBackend):
                 "root_cause": bug.get("root_cause"),
                 "solution": bug.get("solution"),
                 "test_case": bug.get("test_case"),
+                "paths": bug.get("paths", []),
+                "impacts": bug.get("impacts", []),
             })
         return result_list
-    
-    def recall_by_path_full(self, file_path: str, limit: int = RECALL_LIMIT) -> dict[str, Any]:
-        impacted_by = self.get_impacted_bugs(file_path, limit)
-        related_bugs = self.recall_by_path(file_path, limit)
-        
-        # 批量查询 impacts
-        for bug in related_bugs:
-            bug["impacts"] = self.get_bug_impacts(bug["id"])
-        
-        return {"impacted_by": impacted_by, "related_bugs": related_bugs}
-    
+
     # =========================================================================
     # 影响关系
     # =========================================================================
@@ -685,31 +673,7 @@ class JSONLBackend(BugStorageBackend):
                 # 扣减 prevention 分数（delta 为正值，内部取负）
                 self.increment_score(bug_id, "prevention", -prevention_delta)
                 return
-    
-    def get_impacted_bugs(self, file_path: str, limit: int = RECALL_LIMIT) -> list[dict[str, Any]]:
-        """
-        此方法已废弃：impacts 数据结构已改为记录解决方案变更的影响，不再关联路径。
-        请使用 recall_by_path() 或 search_bugs(mode='module') 进行路径相关召回。
-        """
-        return []
-    
-    def get_bug_impacts(self, bug_id: int) -> list[dict[str, Any]]:
-        self._ensure_loaded()
-        bug = self._bugs.get(bug_id)
-        if not bug:
-            return []
-        
-        impacts = bug.get("impacts", [])
-        return [
-            {
-                "solution_change": imp["solution_change"],
-                "impact_description": imp["impact_description"],
-                "impact_type": imp["impact_type"],
-                "severity": imp["severity"],
-            }
-            for imp in sorted(impacts, key=lambda x: x["severity"], reverse=True)
-        ]
-    
+
     def compact_file(self) -> int:
         """压缩文件：移除 status='invalid' 的记录，相同ID只保留最后一条
         
@@ -827,36 +791,44 @@ class JSONLBackend(BugStorageBackend):
     def migrate_bug_paths_after_refactor(self, old_path: str, new_path: str) -> list[int]:
         """路径迁移：只处理 paths 和 recalls，impacts 不再存储路径"""
         migrated_bugs = []
-        
+
         affected_bugs = self.recall_by_path(old_path)
-        
+
         for bug_summary in affected_bugs:
             bug_id = bug_summary["id"]
             bug = self._bugs.get(bug_id)
             if not bug:
                 continue
-            
+
             updated = False
-            old_path_norm = _normalize_path(old_path)
-            new_path_norm = _normalize_path(new_path)
-            
-            # 更新 paths（对象格式）
+            old_path_norm = normalize_path(old_path)
+            new_path_norm = normalize_path(new_path)
+
+            # 更新 paths（支持字符串和对象两种格式）
             current_paths = bug.get("paths", [])
             new_paths = []
             for p in current_paths:
-                if isinstance(p, dict) and p.get('file') == old_path_norm:
-                    # 替换为新路径，保留 functions
-                    new_paths.append({
-                        'file': new_path_norm,
-                        'functions': p.get('functions', [])
-                    })
+                if isinstance(p, dict):
+                    path_file = p.get('file', '')
+                else:
+                    path_file = p
+
+                if path_file == old_path_norm:
+                    # 替换为新路径
+                    if isinstance(p, dict):
+                        new_paths.append({
+                            'file': new_path_norm,
+                            'functions': p.get('functions', [])
+                        })
+                    else:
+                        new_paths.append(new_path_norm)
                     updated = True
                 else:
                     new_paths.append(p)
-            
+
             if updated:
                 bug["paths"] = new_paths
-            
+
             # 更新 recalls
             current_recalls = bug.get("recalls", [])
             matched_recalls = [r for r in current_recalls if match_path(old_path_norm, r)]
@@ -873,12 +845,12 @@ class JSONLBackend(BugStorageBackend):
                         updated_recalls.append(r)
                 bug["recalls"] = updated_recalls
                 updated = True
-            
+
             if updated:
                 bug["updated_at"] = datetime.now().isoformat()
                 self._append_bug(bug)
                 migrated_bugs.append(bug_id)
-        
+
         return list(set(migrated_bugs))
     
     # -------------------- 重构后的新接口实现 --------------------

@@ -160,14 +160,7 @@ class BugStorageBackend(ABC):
     def recall_by_pattern(self, pattern: str, limit: int = 10) -> list[dict[str, Any]]:
         """按模式召回"""
         pass
-    
-    @abstractmethod
-    def recall_by_path_full(
-        self, file_path: str, limit: int = 10
-    ) -> dict[str, Any]:
-        """完整召回（正向+反向）"""
-        pass
-    
+
     # -------------------- 影响关系 --------------------
     
     @abstractmethod
@@ -181,18 +174,6 @@ class BugStorageBackend(ABC):
         prevention_delta: float = 3.0,
     ) -> Any:
         """添加影响关系，返回 impact_id"""
-        pass
-    
-    @abstractmethod
-    def get_impacted_bugs(
-        self, file_path: str, limit: int = 10
-    ) -> list[dict[str, Any]]:
-        """查询会影响指定文件的 bugs"""
-        pass
-    
-    @abstractmethod
-    def get_bug_impacts(self, bug_id: Any) -> list[dict[str, Any]]:
-        """查询 bug 的影响"""
         pass
     
     @abstractmethod

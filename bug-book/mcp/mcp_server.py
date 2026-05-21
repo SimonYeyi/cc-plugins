@@ -7,9 +7,8 @@ from pathlib import Path
 from typing import Any, Optional
 from datetime import datetime
 
-# 导入工厂和接口
-from backend_factory import create_backend
-from storage_backend import BugStorageBackend
+# 导入
+from bug_service import BugService
 from config import find_project_root
 
 
@@ -22,8 +21,7 @@ class MCPServer:
 
     def __init__(self, storage_path=None):
         self.storage_path = storage_path
-        # 通过工厂创建后端实例（依赖注入）
-        self.backend: BugStorageBackend = create_backend()
+        self.service = BugService()
 
     def handle_request(self, request: dict) -> dict:
         """处理 MCP 请求"""
@@ -261,10 +259,10 @@ class MCPServer:
     def _call(self, tool_name: str, args):
         """实际调用函数（通过后端实例）"""
         functions = {
-            'save_bugs': lambda: self.backend.save_bugs(args),  # 直接传数组
-            'search_bugs': lambda: self.backend.search_bugs(**args),
-            'organize_bugs': lambda: self.backend.organize_bugs(),
-            'get_bug_detail': lambda: self.backend.get_bug_detail(args['bug_id']),
+            'save_bugs': lambda: self.service.save_bugs(args),
+            'search_bugs': lambda: self.service.search_bugs(**args),
+            'organize_bugs': lambda: self.service.organize_bugs(),
+            'get_bug_detail': lambda: self.service.get_bug_detail(args['bug_id']),
             'recall_for_hook': lambda: self._handle_recall_for_hook(args['file_path'], args['transcript_path'], args.get('limit', 10)),
             'migrate_path_for_hook': lambda: self._handle_migrate_path_for_hook(args['command']),
         }
@@ -293,7 +291,7 @@ class MCPServer:
             }
 
         # 2. 调用后端召回（使用相对路径）
-        related_bugs = self.backend.recall_by_path(rel_file, limit=limit)
+        related_bugs = self.service.recall_by_path(rel_file, limit=limit)
 
         if not related_bugs:
             return {
@@ -375,7 +373,7 @@ class MCPServer:
         old_path, new_path = match.groups()
 
         # 调用后端迁移
-        migrated_bugs = self.backend.migrate_bug_paths_after_refactor(old_path, new_path)
+        migrated_bugs = self.service.migrate_bug_paths_after_refactor(old_path, new_path)
 
         migrated_count = len(migrated_bugs)
         summary = f"🔄 路径迁移完成，影响 {migrated_count} 个 bug 记录"

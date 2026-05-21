@@ -158,5 +158,5 @@ python tests/test_mcp_server_e2e.py
 
 ## 相关文档
 
-- [后端单元测试](./backends.md) - `tests/test_backends.py`
+- [后端单元测试](./bug-backend.md) - `tests/test_bug_backend.py`
 - [测试用例索引](./README.md)

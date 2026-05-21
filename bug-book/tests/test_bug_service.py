@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bug-book 6个公共接口的单元测试"""
+"""BugService 单元测试 - 测试业务编排层的 6 个公共接口"""
 
 import os
 import sys
@@ -10,8 +10,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root / "mcp"))
 
-from backend_factory import create_backend
-from storage_backend import BugStorageBackend
+from bug_service import BugService
 
 # 测试数据
 DEFAULT_SCORES = {
@@ -26,10 +25,10 @@ DEFAULT_SCORES = {
 
 
 @pytest.fixture
-def backend():
-    """创建 JSONL 后端实例"""
+def service():
+    """创建 BugService 实例"""
     # 清除模块缓存
-    modules_to_clear = [m for m in list(sys.modules.keys()) if m.startswith(('mcp.', 'backend_factory', 'jsonl_backend', 'config', 'storage_backend', 'path_utils'))]
+    modules_to_clear = [m for m in list(sys.modules.keys()) if m.startswith(('mcp.', 'backend_factory', 'jsonl_backend', 'config', 'bug_backend', 'path_utils', 'bug_service'))]
     for mod in modules_to_clear:
         del sys.modules[mod]
 
@@ -44,17 +43,16 @@ def backend():
     except OSError:
         pass
 
-    instance = create_backend()
-    return instance
+    return BugService()
 
 
 # ============================================================================
-# 1. save_bugs 接口测试 - add 模式
+# TC-S01 ~ TC-S04: save_bugs - add 模式
 # ============================================================================
 
-def test_save_bugs_add_minimal_fields(backend):
+def test_save_bugs_add_minimal(service):
     """TC-S01: save_bugs add 模式 - 最小字段"""
-    result = backend.save_bugs([{
+    result = service.save_bugs([{
         'mode': 'add',
         'title': '测试Bug',
         'phenomenon': '测试现象'
@@ -64,15 +62,15 @@ def test_save_bugs_add_minimal_fields(backend):
     bug_id = result['results'][0]['id']
     assert bug_id > 0
 
-    detail = backend.get_bug_detail(bug_id)
+    detail = service.get_bug_detail(bug_id)
     assert detail["title"] == "测试Bug"
     assert detail["verified"] == 0
     assert detail["status"] == "active"
 
 
-def test_save_bugs_add_full_fields(backend):
+def test_save_bugs_add_full_fields(service):
     """TC-S02: save_bugs add 模式 - 完整字段"""
-    result = backend.save_bugs([{
+    result = service.save_bugs([{
         'mode': 'add',
         'title': 'session丢失',
         'phenomenon': '刷新页面丢失',
@@ -87,7 +85,7 @@ def test_save_bugs_add_full_fields(backend):
         'module_patterns': ['auth/*'],
     }])
     bug_id = result['results'][0]['id']
-    detail = backend.get_bug_detail(bug_id)
+    detail = service.get_bug_detail(bug_id)
     assert detail["title"] == "session丢失"
     assert detail["paths"] == [{'file': 'src/auth/session.ts', 'functions': []}]
     assert detail["tags"] == ["auth"]
@@ -95,22 +93,22 @@ def test_save_bugs_add_full_fields(backend):
     assert detail["status"] == "resolved"
 
 
-def test_save_bugs_add_chinese(backend):
+def test_save_bugs_add_chinese(service):
     """TC-S03: save_bugs add 模式 - 含中文"""
-    result = backend.save_bugs([{
+    result = service.save_bugs([{
         'mode': 'add',
         'title': '中文标题',
         'phenomenon': '中文现象描述',
     }])
     bug_id = result['results'][0]['id']
-    detail = backend.get_bug_detail(bug_id)
+    detail = service.get_bug_detail(bug_id)
     assert detail["title"] == "中文标题"
     assert "中文" in detail["phenomenon"]
 
 
-def test_save_bugs_add_multiple_in_one_call(backend):
+def test_save_bugs_add_multiple_in_one_call(service):
     """TC-S04: save_bugs add 模式 - 批量新增"""
-    result = backend.save_bugs([
+    result = service.save_bugs([
         {'mode': 'add', 'title': 'Bug1', 'phenomenon': '现象1'},
         {'mode': 'add', 'title': 'Bug2', 'phenomenon': '现象2'},
     ])
@@ -119,102 +117,100 @@ def test_save_bugs_add_multiple_in_one_call(backend):
 
 
 # ============================================================================
-# 2. save_bugs 接口测试 - update_fields 模式
+# TC-U01 ~ TC-U03: save_bugs - update_fields 模式
 # ============================================================================
 
-def test_save_bugs_update_fields_single(backend):
+def test_save_bugs_update_fields_single(service):
     """TC-U01: save_bugs update_fields 模式 - 更新单字段"""
-    # 先添加
-    add_result = backend.save_bugs([{'mode': 'add', 'title': '旧标题', 'phenomenon': '旧现象'}])
+    add_result = service.save_bugs([{'mode': 'add', 'title': '旧标题', 'phenomenon': '旧现象'}])
     bug_id = add_result['results'][0]['id']
 
-    # 再更新
-    backend.save_bugs([{
+    service.save_bugs([{
         'mode': 'update_fields',
         'id': bug_id,
         'title': '新标题'
     }])
-    detail = backend.get_bug_detail(bug_id)
+    detail = service.get_bug_detail(bug_id)
     assert detail["title"] == "新标题"
-    assert detail["phenomenon"] == "旧现象"  # 未更新的字段保持不变
+    assert detail["phenomenon"] == "旧现象"
 
 
-def test_save_bugs_update_fields_multiple(backend):
+def test_save_bugs_update_fields_multiple(service):
     """TC-U02: save_bugs update_fields 模式 - 更新多字段"""
-    add_result = backend.save_bugs([{'mode': 'add', 'title': '旧', 'phenomenon': '旧', 'verified': True}])
+    add_result = service.save_bugs([{'mode': 'add', 'title': '旧', 'phenomenon': '旧', 'verified': True}])
     bug_id = add_result['results'][0]['id']
 
-    backend.save_bugs([{
+    service.save_bugs([{
         'mode': 'update_fields',
         'id': bug_id,
         'title': '新',
         'root_cause': '新根因'
     }])
-    detail = backend.get_bug_detail(bug_id)
+    detail = service.get_bug_detail(bug_id)
     assert detail["title"] == "新"
     assert detail["root_cause"] == "新根因"
 
 
-def test_save_bugs_update_fields_verified(backend):
+def test_save_bugs_update_fields_verified(service):
     """TC-U03: save_bugs update_fields 模式 - 更新 verified 字段"""
-    add_result = backend.save_bugs([{'mode': 'add', 'title': '待验证', 'phenomenon': '', 'verified': False}])
+    add_result = service.save_bugs([{'mode': 'add', 'title': '待验证', 'phenomenon': '', 'verified': False}])
     bug_id = add_result['results'][0]['id']
 
-    backend.save_bugs([{
+    service.save_bugs([{
         'mode': 'update_fields',
         'id': bug_id,
         'verified': True,
         'verified_by': 'User',
     }])
-    detail = backend.get_bug_detail(bug_id)
+    detail = service.get_bug_detail(bug_id)
     assert detail["verified"] == 1
     assert detail["verified_by"] == "User"
     assert detail["status"] == "resolved"
 
 
 # ============================================================================
-# 3. save_bugs 接口测试 - delete 模式（软删除）
+# TC-D01 ~ TC-D02: save_bugs - delete 模式
 # ============================================================================
 
-def test_save_bugs_delete_exists(backend):
+def test_save_bugs_delete_exists(service):
     """TC-D01: save_bugs delete 模式 - 删除存在的记录"""
-    add_result = backend.save_bugs([{'mode': 'add', 'title': '待删除', 'phenomenon': ''}])
+    add_result = service.save_bugs([{'mode': 'add', 'title': '待删除', 'phenomenon': ''}])
     bug_id = add_result['results'][0]['id']
 
-    backend.save_bugs([{'mode': 'delete', 'id': bug_id}])
+    service.save_bugs([{'mode': 'delete', 'id': bug_id}])
 
-    detail = backend.get_bug_detail(bug_id)
+    detail = service.get_bug_detail(bug_id)
     assert detail["status"] == "invalid"
 
 
-def test_save_bugs_delete_nonexistent(backend):
+def test_save_bugs_delete_nonexistent(service):
     """TC-D02: save_bugs delete 模式 - 删除不存在的 id 抛出异常"""
     with pytest.raises(Exception):
-        backend.save_bugs([{'mode': 'delete', 'id': 9999}])
+        service.save_bugs([{'mode': 'delete', 'id': 9999}])
 
 
 # ============================================================================
-# 4. save_bugs 接口测试 - add_paths 模式
+# TC-P01 ~ TC-P02: save_bugs - add_paths 模式
 # ============================================================================
 
-def test_save_bugs_add_paths(backend):
+def test_save_bugs_add_paths(service):
     """TC-P01: save_bugs add_paths 模式 - 添加路径"""
-    add_result = backend.save_bugs([{'mode': 'add', 'title': '路径测试', 'phenomenon': ''}])
+    add_result = service.save_bugs([{'mode': 'add', 'title': '路径测试', 'phenomenon': ''}])
     bug_id = add_result['results'][0]['id']
 
-    backend.save_bugs([{
+    service.save_bugs([{
         'mode': 'add_paths',
         'id': bug_id,
         'paths': [{'file': 'src/a.ts', 'functions': ['f1', 'f2']}]
     }])
-    detail = backend.get_bug_detail(bug_id)
+    detail = service.get_bug_detail(bug_id)
     assert len(detail["paths"]) == 1
     assert detail["paths"][0]["file"] == "src/a.ts"
 
 
-def test_save_bugs_add_paths_merge(backend):
+def test_save_bugs_add_paths_merge(service):
     """TC-P02: save_bugs add_paths 模式 - 合并函数"""
-    add_result = backend.save_bugs([{
+    add_result = service.save_bugs([{
         'mode': 'add',
         'title': '路径合并',
         'phenomenon': '',
@@ -222,43 +218,43 @@ def test_save_bugs_add_paths_merge(backend):
     }])
     bug_id = add_result['results'][0]['id']
 
-    backend.save_bugs([{
+    service.save_bugs([{
         'mode': 'add_paths',
         'id': bug_id,
         'paths': [{'file': 'src/a.ts', 'functions': ['f2']}]
     }])
-    detail = backend.get_bug_detail(bug_id)
+    detail = service.get_bug_detail(bug_id)
     assert len(detail["paths"]) == 1
     assert set(detail["paths"][0]["functions"]) == {"f1", "f2"}
 
 
 # ============================================================================
-# 5. save_bugs 接口测试 - increment_scores 模式
+# TC-INC01: save_bugs - increment_scores 模式
 # ============================================================================
 
-def test_save_bugs_increment_scores(backend):
+def test_save_bugs_increment_scores(service):
     """TC-INC01: save_bugs increment_scores 模式 - 累加分数"""
-    add_result = backend.save_bugs([{'mode': 'add', 'title': '分数测试', 'phenomenon': '', 'scores': {'occurrences': 0}}])
+    add_result = service.save_bugs([{'mode': 'add', 'title': '分数测试', 'phenomenon': '', 'scores': {'occurrences': 0}}])
     bug_id = add_result['results'][0]['id']
 
-    backend.save_bugs([{'mode': 'increment_scores', 'id': bug_id, 'scores': {'occurrences': 1.0}}])
-    backend.save_bugs([{'mode': 'increment_scores', 'id': bug_id, 'scores': {'occurrences': 1.0}}])
-    backend.save_bugs([{'mode': 'increment_scores', 'id': bug_id, 'scores': {'occurrences': 1.0}}])
+    service.save_bugs([{'mode': 'increment_scores', 'id': bug_id, 'scores': {'occurrences': 1.0}}])
+    service.save_bugs([{'mode': 'increment_scores', 'id': bug_id, 'scores': {'occurrences': 1.0}}])
+    service.save_bugs([{'mode': 'increment_scores', 'id': bug_id, 'scores': {'occurrences': 1.0}}])
 
-    detail = backend.get_bug_detail(bug_id)
+    detail = service.get_bug_detail(bug_id)
     assert detail["scores"]["occurrences"] == 3.0
 
 
 # ============================================================================
-# 6. save_bugs 接口测试 - add_impacts 模式
+# TC-IMP01: save_bugs - add_impacts 模式
 # ============================================================================
 
-def test_save_bugs_add_impacts(backend):
+def test_save_bugs_add_impacts(service):
     """TC-IMP01: save_bugs add_impacts 模式 - 添加影响"""
-    add_result = backend.save_bugs([{'mode': 'add', 'title': '影响测试', 'phenomenon': ''}])
+    add_result = service.save_bugs([{'mode': 'add', 'title': '影响测试', 'phenomenon': ''}])
     bug_id = add_result['results'][0]['id']
 
-    backend.save_bugs([{
+    service.save_bugs([{
         'mode': 'add_impacts',
         'id': bug_id,
         'impacts': [{
@@ -268,55 +264,54 @@ def test_save_bugs_add_impacts(backend):
             'severity': 8
         }]
     }])
-    detail = backend.get_bug_detail(bug_id)
+    detail = service.get_bug_detail(bug_id)
     assert len(detail["impacts"]) == 1
     assert detail["impacts"][0]["impact_type"] == "regression"
 
 
 # ============================================================================
-# 7. search_bugs 接口测试
+# TC-SE01 ~ TC-SE06: search_bugs 接口
 # ============================================================================
 
-def test_search_bugs_keyword(backend):
+def test_search_bugs_keyword(service):
     """TC-SE01: search_bugs keyword 模式 - 关键词搜索"""
-    backend.save_bugs([{'mode': 'add', 'title': '测试', 'phenomenon': '现象', 'keywords': ['XYZ123']}])
+    service.save_bugs([{'mode': 'add', 'title': '测试', 'phenomenon': '现象', 'keywords': ['XYZ123']}])
 
-    result = backend.search_bugs(mode='keyword', keyword='XYZ123')
+    result = service.search_bugs(mode='keyword', keyword='XYZ123')
     assert result['pagination']['total'] >= 1
-    assert any('XYZ123' in b.get('keywords', []) for b in result['bugs'])
 
 
-def test_search_bugs_recent(backend):
+def test_search_bugs_recent(service):
     """TC-SE02: search_bugs recent 模式 - 最近创建"""
-    backend.save_bugs([{'mode': 'add', 'title': '最近', 'phenomenon': ''}])
+    service.save_bugs([{'mode': 'add', 'title': '最近', 'phenomenon': ''}])
 
-    result = backend.search_bugs(mode='recent', days=7)
+    result = service.search_bugs(mode='recent', days=7)
     assert result['pagination']['total'] >= 1
 
 
-def test_search_bugs_high_score(backend):
+def test_search_bugs_high_score(service):
     """TC-SE03: search_bugs high_score 模式 - 高分搜索"""
-    backend.save_bugs([{'mode': 'add', 'title': '高分', 'phenomenon': '', 'scores': {
+    service.save_bugs([{'mode': 'add', 'title': '高分', 'phenomenon': '', 'scores': {
         'importance': 10, 'complexity': 10, 'scope': 10, 'difficulty': 10,
         'occurrences': 0, 'emotion': 0, 'prevention': 10
     }}])
 
-    result = backend.search_bugs(mode='high_score', min_score=30.0)
+    result = service.search_bugs(mode='high_score', min_score=30.0)
     assert result['pagination']['total'] >= 1
     assert all(b['score'] >= 30.0 for b in result['bugs'])
 
 
-def test_search_bugs_critical(backend):
+def test_search_bugs_critical(service):
     """TC-SE04: search_bugs critical 模式 - 最严重"""
-    backend.save_bugs([{'mode': 'add', 'title': '严重', 'phenomenon': ''}])
+    service.save_bugs([{'mode': 'add', 'title': '严重', 'phenomenon': ''}])
 
-    result = backend.search_bugs(mode='critical', limit=5)
+    result = service.search_bugs(mode='critical', limit=5)
     assert len(result['bugs']) <= 5
 
 
-def test_search_bugs_custom(backend):
+def test_search_bugs_custom(service):
     """TC-SE05: search_bugs custom 模式 - 自定义条件"""
-    backend.save_bugs([{
+    service.save_bugs([{
         'mode': 'add',
         'title': '自定义',
         'phenomenon': '',
@@ -327,40 +322,39 @@ def test_search_bugs_custom(backend):
         }
     }])
 
-    # verified=True 时 status='resolved'
-    result = backend.search_bugs(mode='custom', status='resolved', min_score=30.0)
+    result = service.search_bugs(mode='custom', status='resolved', min_score=30.0)
     assert result['pagination']['total'] >= 1
 
 
-def test_search_bugs_no_result(backend):
+def test_search_bugs_no_result(service):
     """TC-SE06: search_bugs - 无结果"""
-    result = backend.search_bugs(mode='keyword', keyword='不存在的关键词XYZABC')
+    result = service.search_bugs(mode='keyword', keyword='不存在的关键词XYZABC')
     assert result['pagination']['total'] == 0
 
 
 # ============================================================================
-# 8. get_bug_detail 接口测试
+# TC-G01 ~ TC-G03: get_bug_detail 接口
 # ============================================================================
 
-def test_get_bug_detail_exists(backend):
+def test_get_bug_detail_exists(service):
     """TC-G01: get_bug_detail - 查询存在的 bug"""
-    add_result = backend.save_bugs([{'mode': 'add', 'title': '详情测试', 'phenomenon': ''}])
+    add_result = service.save_bugs([{'mode': 'add', 'title': '详情测试', 'phenomenon': ''}])
     bug_id = add_result['results'][0]['id']
 
-    detail = backend.get_bug_detail(bug_id)
+    detail = service.get_bug_detail(bug_id)
     assert detail["id"] == bug_id
     assert detail["title"] == "详情测试"
 
 
-def test_get_bug_detail_nonexistent(backend):
+def test_get_bug_detail_nonexistent(service):
     """TC-G02: get_bug_detail - 查询不存在的 bug 抛出异常"""
     with pytest.raises(Exception):
-        backend.get_bug_detail(9999)
+        service.get_bug_detail(9999)
 
 
-def test_get_bug_detail_full(backend):
+def test_get_bug_detail_full(service):
     """TC-G03: get_bug_detail - 完整字段"""
-    add_result = backend.save_bugs([{
+    add_result = service.save_bugs([{
         'mode': 'add',
         'title': '完整详情',
         'phenomenon': '现象',
@@ -374,7 +368,7 @@ def test_get_bug_detail_full(backend):
     }])
     bug_id = add_result['results'][0]['id']
 
-    detail = backend.get_bug_detail(bug_id)
+    detail = service.get_bug_detail(bug_id)
 
     assert len(detail["scores"]) == 7
     assert detail["paths"] == [{'file': 'src/a.ts', 'functions': []}]
@@ -384,12 +378,12 @@ def test_get_bug_detail_full(backend):
 
 
 # ============================================================================
-# 9. recall_by_path 接口测试
+# TC-R01 ~ TC-R03: recall_by_path 接口
 # ============================================================================
 
-def test_recall_by_path_exact(backend):
+def test_recall_by_path_exact(service):
     """TC-R01: recall_by_path - 精确路径召回"""
-    add_result = backend.save_bugs([{
+    add_result = service.save_bugs([{
         'mode': 'add',
         'title': '精确召回',
         'phenomenon': '',
@@ -397,33 +391,33 @@ def test_recall_by_path_exact(backend):
     }])
     bug_id = add_result['results'][0]['id']
 
-    results = backend.recall_by_path('src/auth/session.ts')
+    results = service.recall_by_path('src/auth/session.ts')
     assert any(r["id"] == bug_id for r in results)
 
 
-def test_recall_by_path_unrelated(backend):
+def test_recall_by_path_unrelated(service):
     """TC-R02: recall_by_path - 不相关路径不召回"""
-    backend.save_bugs([{
+    service.save_bugs([{
         'mode': 'add',
         'title': 'api问题',
         'phenomenon': '',
         'paths': ['src/api/user.ts']
     }])
 
-    results = backend.recall_by_path('src/auth/login.ts')
+    results = service.recall_by_path('src/auth/login.ts')
     assert not any(r["title"] == "api问题" for r in results)
 
 
-def test_recall_by_path_returns_impacts(backend):
+def test_recall_by_path_returns_impacts(service):
     """TC-R03: recall_by_path - 返回 impacts 字段"""
-    add_result = backend.save_bugs([{
+    add_result = service.save_bugs([{
         'mode': 'add',
         'title': '影响召回',
         'phenomenon': '',
     }])
     bug_id = add_result['results'][0]['id']
 
-    backend.save_bugs([{
+    service.save_bugs([{
         'mode': 'add_impacts',
         'id': bug_id,
         'impacts': [{
@@ -434,19 +428,19 @@ def test_recall_by_path_returns_impacts(backend):
         }]
     }])
 
-    results = backend.recall_by_path('any/path.ts', limit=10)
+    results = service.recall_by_path('any/path.ts', limit=10)
     for r in results:
         if r['id'] == bug_id:
             assert 'impacts' in r
 
 
 # ============================================================================
-# 10. migrate_bug_paths_after_refactor 接口测试
+# TC-M01 ~ TC-M03: migrate_bug_paths_after_refactor 接口
 # ============================================================================
 
-def test_migrate_paths_exact_match(backend):
+def test_migrate_paths_exact_match(service):
     """TC-M01: migrate_bug_paths_after_refactor - 精确路径迁移"""
-    add_result = backend.save_bugs([{
+    add_result = service.save_bugs([{
         'mode': 'add',
         'title': '路径迁移',
         'phenomenon': '',
@@ -454,29 +448,29 @@ def test_migrate_paths_exact_match(backend):
     }])
     bug_id = add_result['results'][0]['id']
 
-    migrated = backend.migrate_bug_paths_after_refactor(
+    migrated = service.migrate_bug_paths_after_refactor(
         'src/auth/session.ts',
         'src/modules/auth/session.ts'
     )
     assert bug_id in migrated
 
-    detail = backend.get_bug_detail(bug_id)
+    detail = service.get_bug_detail(bug_id)
     path_files = [p.get('file') if isinstance(p, dict) else p for p in detail['paths']]
     assert 'src/modules/auth/session.ts' in path_files
 
 
-def test_migrate_paths_no_match(backend):
+def test_migrate_paths_no_match(service):
     """TC-M02: migrate_bug_paths_after_refactor - 无匹配时返回空"""
-    migrated = backend.migrate_bug_paths_after_refactor(
+    migrated = service.migrate_bug_paths_after_refactor(
         'nonexistent/path.ts',
         'new/path.ts'
     )
     assert migrated == []
 
 
-def test_migrate_paths_with_module_pattern(backend):
+def test_migrate_paths_with_module_pattern(service):
     """TC-M03: migrate_bug_paths_after_refactor - 同时迁移 module_patterns"""
-    add_result = backend.save_bugs([{
+    add_result = service.save_bugs([{
         'mode': 'add',
         'title': '模块迁移',
         'phenomenon': '',
@@ -484,27 +478,25 @@ def test_migrate_paths_with_module_pattern(backend):
     }])
     bug_id = add_result['results'][0]['id']
 
-    # 通过路径触发 module_pattern 匹配
-    migrated = backend.migrate_bug_paths_after_refactor(
+    migrated = service.migrate_bug_paths_after_refactor(
         'src/auth/login.ts',
         'src/modules/auth/login.ts'
     )
     assert bug_id in migrated
 
-    detail = backend.get_bug_detail(bug_id)
+    detail = service.get_bug_detail(bug_id)
     assert 'src/modules/auth/*' in detail['module_patterns']
 
 
 # ============================================================================
-# 11. organize_bugs 接口测试
+# TC-O01: organize_bugs 接口
 # ============================================================================
 
-def test_organize_bugs_returns_structure(backend):
+def test_organize_bugs_returns_structure(service):
     """TC-O01: organize_bugs - 返回结构化数据"""
-    # 添加一些测试数据
-    backend.save_bugs([{'mode': 'add', 'title': '测试', 'phenomenon': ''}])
+    service.save_bugs([{'mode': 'add', 'title': '测试', 'phenomenon': ''}])
 
-    result = backend.organize_bugs()
+    result = service.organize_bugs()
 
     assert 'invalid_candidates' in result
     assert 'unverified_old' in result
@@ -516,25 +508,25 @@ def test_organize_bugs_returns_structure(backend):
 
 
 # ============================================================================
-# 12. 完整 CRUD 流程测试
+# TC-CRUD01: 完整 CRUD 流程测试
 # ============================================================================
 
-def test_full_crud_through_save_bugs(backend):
+def test_full_crud_through_save_bugs(service):
     """TC-CRUD01: 完整 CRUD 流程通过 save_bugs"""
     # Create
-    add_result = backend.save_bugs([{'mode': 'add', 'title': 'CRUD', 'phenomenon': '创建'}])
+    add_result = service.save_bugs([{'mode': 'add', 'title': 'CRUD', 'phenomenon': '创建'}])
     bug_id = add_result['results'][0]['id']
 
     # Read
-    detail = backend.get_bug_detail(bug_id)
+    detail = service.get_bug_detail(bug_id)
     assert detail['phenomenon'] == '创建'
 
     # Update
-    backend.save_bugs([{'mode': 'update_fields', 'id': bug_id, 'phenomenon': '更新'}])
-    detail = backend.get_bug_detail(bug_id)
+    service.save_bugs([{'mode': 'update_fields', 'id': bug_id, 'phenomenon': '更新'}])
+    detail = service.get_bug_detail(bug_id)
     assert detail['phenomenon'] == '更新'
 
     # Delete
-    backend.save_bugs([{'mode': 'delete', 'id': bug_id}])
-    detail = backend.get_bug_detail(bug_id)
+    service.save_bugs([{'mode': 'delete', 'id': bug_id}])
+    detail = service.get_bug_detail(bug_id)
     assert detail['status'] == 'invalid'

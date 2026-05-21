@@ -3,6 +3,7 @@
 
 from typing import Any, Optional
 from backend_factory import create_backend
+from config import find_project_root
 
 
 class BugService:
@@ -325,19 +326,19 @@ class BugService:
         offset = kwargs.get('offset', 0)
         
         if mode == 'keyword':
-            bugs = self.backend.search_by_keyword(kwargs['keyword'], limit=limit + offset)
+            bugs = self.backend.find_by_keyword(kwargs['keyword'], limit=limit + offset)
         elif mode == 'tag':
-            bugs = self.backend.search_by_tag(kwargs['tag'], limit=limit + offset)
+            bugs = self.backend.find_by_tag(kwargs['tag'], limit=limit + offset)
         elif mode == 'recent':
-            bugs = self.backend.search_recent(kwargs.get('days', 7), limit=limit + offset)
+            bugs = self.backend.find_by_created_after(kwargs.get('days', 7), limit=limit + offset)
         elif mode == 'high_score':
-            bugs = self.backend.search_high_score(kwargs.get('min_score', 30.0), limit=limit + offset)
+            bugs = self.backend.find_by_min_score(kwargs.get('min_score', 30.0), limit=limit + offset)
         elif mode == 'critical':
-            bugs = self.backend.search_top_critical(limit=limit + offset)
+            bugs = self.backend.find_all_sorted(limit=limit + offset)
         elif mode == 'unverified':
-            bugs = self.backend.search_recent_unverified(kwargs.get('days', 7), limit=limit + offset)
+            bugs = self.backend.find_unverified_since(kwargs.get('days', 7), limit=limit + offset)
         elif mode == 'custom':
-            bugs = self.backend.search_by_status_and_score(
+            bugs = self.backend.query(
                 status=kwargs.get('status', 'active'),
                 min_score=kwargs.get('min_score', 0.0),
                 max_score=kwargs.get('max_score'),
@@ -346,7 +347,7 @@ class BugService:
                 limit=limit + offset
             )
         elif mode == 'module':
-            bugs = self.backend.search_by_module_patterns(kwargs['pattern'], limit=limit + offset)
+            bugs = self.backend.find_by_pattern(kwargs['pattern'], limit=limit + offset)
         else:
             raise ValueError(f"Unknown search mode: {mode}")
         
@@ -380,7 +381,7 @@ class BugService:
         for bug_id, bug in all_bugs.items():
             if bug.get('status') == 'invalid':
                 continue
-            invalid_paths = self.backend.check_bug_paths(bug_id)
+            invalid_paths = self._check_bug_paths(bug)
             if invalid_paths:
                 invalid_candidates.append({
                     'id': bug_id,
@@ -390,7 +391,7 @@ class BugService:
                 })
         
         # 3. 检查长期未验证的记录
-        unverified_old = self.backend.list_unverified_old(days=30, limit=99999)
+        unverified_old = self.backend.find_unverified_old(days=30, limit=99999)
         
         # 4. 统计信息
         total_count = self.backend.count_bugs()
@@ -415,6 +416,30 @@ class BugService:
             'last_organize_time': last_organize_time,
         }
     
+    def _check_bug_paths(self, bug: dict) -> list[str]:
+        """检查 bug 的 paths/module_patterns 是否有效，返回无效路径列表"""
+        root = find_project_root()
+        invalid_paths = []
+        
+        for path in bug.get("paths", []) + bug.get("module_patterns", []):
+            if isinstance(path, dict):
+                path_str = path.get('file', '')
+            else:
+                path_str = path
+            
+            # 检查路径是否存在
+            if path_str.endswith("/*"):
+                abs_path = root / path_str[:-2]
+                is_valid = abs_path.exists() and abs_path.is_dir()
+            else:
+                abs_path = root / path_str
+                is_valid = abs_path.exists()
+            
+            if not is_valid:
+                invalid_paths.append(path_str)
+        
+        return invalid_paths
+    
     # ==================== 详情（委托给 backend）====================
     
     def get_bug_detail(self, bug_id: int) -> Optional[dict]:
@@ -425,19 +450,19 @@ class BugService:
     
     def recall_by_path(self, file_path: str, limit: int = 10) -> list:
         """按路径召回"""
-        return self.backend.recall_by_path(file_path, limit)
+        return self.backend.find_by_path(file_path, limit)
     
-    def migrate_bug_paths_after_refactor(self, old_path: str, new_path: str) -> list:
+    def migrate_paths(self, old_path: str, new_path: str) -> list:
         """路径迁移"""
         from path_utils import normalize_path, match_path
         
         old_path_norm = normalize_path(old_path)
         new_path_norm = normalize_path(new_path)
         
-        # 通过 paths 召回
-        affected_bugs = self.backend.recall_by_path(old_path, limit=99999)
-        # 通过 module_patterns 召回
-        pattern_bugs = self.backend.search_by_module_patterns(old_path, limit=99999)
+        # 通过 paths 查询
+        affected_bugs = self.backend.find_by_path(old_path, limit=99999)
+        # 通过 pattern 查询
+        pattern_bugs = self.backend.find_by_pattern(old_path, limit=99999)
         
         # 合并去重
         seen_ids = set()

@@ -124,8 +124,8 @@ class JSONLBackend(BugBackend):
         self._ensure_loaded()
         return dict(self._bugs)
     
-    def recall_by_path(self, file_path: str, limit: int = RECALL_LIMIT) -> list[dict[str, Any]]:
-        """按路径召回（利用索引）"""
+    def find_by_path(self, file_path: str, limit: int = RECALL_LIMIT) -> list[dict[str, Any]]:
+        """按路径查询（利用索引）"""
         self._ensure_loaded()
         file_path = normalize_path(file_path)
         matched_ids = set()
@@ -427,9 +427,9 @@ class JSONLBackend(BugBackend):
         self._append_bug(bug)
     
     # =========================================================================
-    # 搜索功能（私有方法）
+    # 查询功能（私有方法）
     # =========================================================================
-    def search_by_keyword(self, keyword: str, limit: int = SEARCH_LIMIT) -> list[dict[str, Any]]:
+    def find_by_keyword(self, keyword: str, limit: int = SEARCH_LIMIT) -> list[dict[str, Any]]:
         self._ensure_loaded()
         keywords = [k.strip().lower() for k in keyword.split() if k.strip()]
         if not keywords:
@@ -452,7 +452,7 @@ class JSONLBackend(BugBackend):
         results.sort(key=lambda x: x.get('score', 0), reverse=True)
         return results[:limit]
     
-    def search_by_tag(self, tag: str, limit: int = SEARCH_LIMIT) -> list[dict[str, Any]]:
+    def find_by_tag(self, tag: str, limit: int = SEARCH_LIMIT) -> list[dict[str, Any]]:
         self._ensure_loaded()
         tag = tag.lower()
         matched_ids = set()
@@ -465,7 +465,7 @@ class JSONLBackend(BugBackend):
         results.sort(key=lambda x: x.get('score', 0), reverse=True)
         return results[:limit]
     
-    def search_recent(self, days: int = 7, limit: int = SEARCH_LIMIT) -> list[dict[str, Any]]:
+    def find_by_created_after(self, days: int = 7, limit: int = SEARCH_LIMIT) -> list[dict[str, Any]]:
         self._ensure_loaded()
         cutoff = datetime.now().timestamp() - (days * 86400)
         cutoff_iso = datetime.fromtimestamp(cutoff).isoformat()
@@ -477,7 +477,7 @@ class JSONLBackend(BugBackend):
         results.sort(key=lambda x: x.get('created_at', ''), reverse=True)
         return results[:limit]
     
-    def search_high_score(self, min_score: float = 30.0, limit: int = SEARCH_LIMIT) -> list[dict[str, Any]]:
+    def find_by_min_score(self, min_score: float = 30.0, limit: int = SEARCH_LIMIT) -> list[dict[str, Any]]:
         self._ensure_loaded()
         results = [
             b for b in self._bugs.values()
@@ -486,7 +486,7 @@ class JSONLBackend(BugBackend):
         results.sort(key=lambda x: x.get('score', 0), reverse=True)
         return results[:limit]
     
-    def search_top_critical(self, limit: int = 20) -> list[dict[str, Any]]:
+    def find_all_sorted(self, limit: int = 20) -> list[dict[str, Any]]:
         self._ensure_loaded()
         results = [
             b for b in self._bugs.values()
@@ -495,7 +495,7 @@ class JSONLBackend(BugBackend):
         results.sort(key=lambda x: x.get('score', 0), reverse=True)
         return results[:limit]
     
-    def search_recent_unverified(self, days: int = SEARCH_LIMIT, limit: int = SEARCH_LIMIT) -> list[dict[str, Any]]:
+    def find_unverified_since(self, days: int = SEARCH_LIMIT, limit: int = SEARCH_LIMIT) -> list[dict[str, Any]]:
         self._ensure_loaded()
         cutoff = datetime.now().timestamp() - (days * 86400)
         cutoff_iso = datetime.fromtimestamp(cutoff).isoformat()
@@ -509,7 +509,7 @@ class JSONLBackend(BugBackend):
         results.sort(key=lambda x: x.get('score', 0), reverse=True)
         return results[:limit]
     
-    def search_by_status_and_score(
+    def query(
         self, status: str = "active", min_score: float = 0.0,
         max_score: Optional[float] = None, verified: Optional[bool] = None,
         order_by: str = "score", limit: int = SEARCH_LIMIT,
@@ -532,7 +532,7 @@ class JSONLBackend(BugBackend):
         
         return results[:limit]
     
-    def search_by_module_patterns(self, pattern: str, limit: int = RECALL_LIMIT) -> list[dict[str, Any]]:
+    def find_by_pattern(self, pattern: str, limit: int = RECALL_LIMIT) -> list[dict[str, Any]]:
         self._ensure_loaded()
         pattern_norm = normalize_path(pattern)
         matched_ids = set()
@@ -656,7 +656,7 @@ class JSONLBackend(BugBackend):
     # =========================================================================
     # 高级功能（私有方法）
     # =========================================================================
-    def list_unverified_old(self, days: int = THRESHOLD_OLD_BUGS_DAYS, limit: int = 20) -> list[dict[str, Any]]:
+    def find_unverified_old(self, days: int = THRESHOLD_OLD_BUGS_DAYS, limit: int = 20) -> list[dict[str, Any]]:
         self._ensure_loaded()
         cutoff = datetime.now().timestamp() - (days * 86400)
         cutoff_iso = datetime.fromtimestamp(cutoff).isoformat()
@@ -680,34 +680,3 @@ class JSONLBackend(BugBackend):
             })
         return result_list
     
-    def _check_path_valid(self, path: str, root: Optional[Path] = None) -> bool:
-        root = root or find_project_root()
-        if path.endswith("/*"):
-            # 通配符路径：去掉 /* 检查目录是否存在
-            abs_path = root / path[:-2]
-            return abs_path.exists() and abs_path.is_dir()
-        abs_path = root / path
-        return abs_path.exists()
-    
-    def check_bug_paths(self, bug_id: int) -> list[str]:
-        """检查 bug 的 paths/module_patterns 路径是否有效，返回无效路径列表"""
-        self._ensure_loaded()
-        bug = self._bugs.get(bug_id)
-        if not bug:
-            return []
-
-        invalid_paths = []
-
-        # 检查 paths 和 module_patterns
-        for path in bug.get("paths", []) + bug.get("module_patterns", []):
-            # paths 可能是字符串或对象格式
-            if isinstance(path, dict):
-                path_str = path.get('file', '')
-            else:
-                path_str = path
-            
-            if not self._check_path_valid(path_str):
-                invalid_paths.append(path_str)
-
-        return invalid_paths
-

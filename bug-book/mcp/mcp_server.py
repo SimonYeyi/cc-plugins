@@ -69,15 +69,8 @@ class MCPServer:
                 '触发场景：\n'
                 '- 整理错题集时修正 bug 详情（如标记失效、更新路径、修改状态等）\n'
                 '注意：日常新增 bug 由 skill 自动完成，无需手动调用此工具。'),
-            
-            # 2. get_bug_detail - 获取详情
-            self._tool('get_bug_detail', '获取 bug 详情',
-                '获取 bug 的完整信息，包括 scores、paths、tags、module_patterns、impacts 等。\n\n'
-                '触发场景：\n'
-                '- 需要获取 bug 的详细信息（如“bug #5 的解决方案是什么”）\n'
-                '- 需要查看 bug 的具体字段信息\n'),
-            
-            # 3. search_bugs - 统一搜索
+
+            # 2. search_bugs - 统一搜索
             self._tool('search_bugs', '统一搜索',
                 '统一搜索接口，支持多种搜索模式和分页。\n\n'
                 '触发场景：\n'
@@ -85,7 +78,7 @@ class MCPServer:
                 '- 查询特定模块的问题（使用 module 模式）\n'
                 '- 查看高分/未验证 bugs\n'),
                         
-            # 4. organize_bugs - 整理错题集
+            # 3. organize_bugs - 整理错题集
             self._tool('organize_bugs', '整理错题集',
                 '整理 bug-book 数据库，执行以下操作：\n'
                 '1. 压缩文件（移除已删除记录，相同ID只保留最后一条）\n'
@@ -97,6 +90,14 @@ class MCPServer:
                 '- 用户要求清理失效条目或归类重复问题\n'
                 '- 定期检查维护（建议每周一次）\n\n'
                 '注意：此操作不会自动修改数据，只返回整理报告和建议。'),
+
+            # 4. get_bug_detail - 获取详情
+            self._tool('get_bug_detail', '获取 bug 详情',
+                '获取 bug 的完整信息，包括 scores、paths、tags、module_patterns、impacts 等。\n\n'
+                '触发场景：\n'
+                '- 需要获取 bug 的详细信息（如“bug #5 的解决方案是什么”）\n'
+                '- 需要查看 bug 的具体字段信息\n'),
+
         ]
 
     def _tool(self, name: str, description: str, long_description: str = '') -> dict:
@@ -205,7 +206,7 @@ class MCPServer:
                     'mode': {
                         'type': 'string',
                         'enum': ['keyword', 'tag', 'recent', 'high_score', 'critical', 'unverified', 'custom', 'module'],
-                        'description': '搜索模式：keyword(关键词)/tag(标签)/recent(最近)/high_score(高分)/critical(严重)/unverified(未验证)/custom(自定义)/module(模块召回)'
+                        'description': '搜索模式：keyword(关键词)/tag(标签)/recent(最近)/high_score(高分)/critical(严重)/unverified(未验证)/custom(自定义)/module(模块搜索)'
                     },
                     'keyword': {'type': 'string', 'description': '搜索关键词（keyword 模式必填）'},
                     'tag': {'type': 'string', 'description': '标签名称（tag 模式必填）'},
@@ -373,7 +374,7 @@ class MCPServer:
         old_path, new_path = match.groups()
 
         # 调用后端迁移
-        migrated_bugs = self.service.migrate_bug_paths_after_refactor(old_path, new_path)
+        migrated_bugs = self.service.migrate_paths(old_path, new_path)
 
         migrated_count = len(migrated_bugs)
         summary = f"🔄 路径迁移完成，影响 {migrated_count} 个 bug 记录"

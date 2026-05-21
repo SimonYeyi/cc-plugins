@@ -51,57 +51,52 @@ class BugBackend(ABC):
         """删除影响关系"""
         pass
     
-    # -------------------- 3. 搜索原语 --------------------
-    
+    # -------------------- 3. 查询原语 --------------------
+
     @abstractmethod
-    def search_by_keyword(self, keyword: str, limit: int) -> list[dict]:
-        """关键词搜索"""
+    def find_by_keyword(self, keyword: str, limit: int) -> list[dict]:
+        """关键词查询"""
         pass
-    
+
     @abstractmethod
-    def search_by_tag(self, tag: str, limit: int) -> list[dict]:
-        """标签搜索"""
+    def find_by_tag(self, tag: str, limit: int) -> list[dict]:
+        """标签查询"""
         pass
-    
+
     @abstractmethod
-    def search_recent(self, days: int, limit: int) -> list[dict]:
-        """最近创建搜索"""
+    def find_by_created_after(self, days: int, limit: int) -> list[dict]:
+        """按创建时间查询"""
         pass
-    
+
     @abstractmethod
-    def search_high_score(self, min_score: float, limit: int) -> list[dict]:
-        """高分搜索"""
+    def find_by_min_score(self, min_score: float, limit: int) -> list[dict]:
+        """按最低分数查询"""
         pass
-    
+
     @abstractmethod
-    def search_top_critical(self, limit: int) -> list[dict]:
-        """关键 bug 搜索"""
+    def find_all_sorted(self, limit: int) -> list[dict]:
+        """获取所有记录并按分数排序"""
         pass
-    
+
     @abstractmethod
-    def search_recent_unverified(self, days: int, limit: int) -> list[dict]:
-        """未验证搜索"""
+    def find_unverified_since(self, days: int, limit: int) -> list[dict]:
+        """查询未验证记录"""
         pass
-    
+
     @abstractmethod
-    def search_by_status_and_score(
+    def query(
         self, status: str, min_score: float, max_score: Optional[float],
         verified: Optional[bool], order_by: str, limit: int
     ) -> list[dict]:
-        """自定义搜索"""
+        """通用查询接口"""
         pass
-    
+
     @abstractmethod
-    def search_by_module_patterns(self, pattern: str, limit: int) -> list[dict]:
-        """模块模式搜索"""
+    def find_by_pattern(self, pattern: str, limit: int) -> list[dict]:
+        """按路径模式查询"""
         pass
     
     # -------------------- 4. 辅助方法 --------------------
-    
-    @abstractmethod
-    def check_bug_paths(self, bug_id: int) -> list[str]:
-        """检查 bug 的路径是否有效，返回无效路径列表"""
-        pass
     
     @abstractmethod
     def count_bugs(self) -> int:
@@ -109,7 +104,7 @@ class BugBackend(ABC):
         pass
     
     @abstractmethod
-    def list_unverified_old(self, days: int, limit: int) -> list[dict]:
+    def find_unverified_old(self, days: int, limit: int) -> list[dict]:
         """列出长期未验证的 bug"""
         pass
     
@@ -121,8 +116,8 @@ class BugBackend(ABC):
     # -------------------- 5. 索引查询 --------------------
     
     @abstractmethod
-    def recall_by_path(self, file_path: str, limit: int = 10) -> list[dict]:
-        """按路径召回（利用索引）"""
+    def find_by_path(self, file_path: str, limit: int = 10) -> list[dict]:
+        """按路径查询（利用索引）"""
         pass
 
     

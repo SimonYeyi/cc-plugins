@@ -167,9 +167,3 @@ metadata 功能是本地辅助功能，不需要通过 MCP 协议暴露：
 - **提高性能**：避免 JSON-RPC 通信开销
 
 ---
-
-## 相关文档
-
-- [后端单元测试](./backends.md) - `tests/test_backends.py`
-- [路径匹配工具测试](./path-utils.md) - `tests/test_path_utils.py`
-- [MCP Server 端到端测试](./mcp-server-e2e.md) - `tests/test_mcp_server_e2e.py`

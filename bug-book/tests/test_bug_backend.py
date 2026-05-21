@@ -265,62 +265,62 @@ def test_add_impact_invalid_type(backend):
 
 
 # ============================================================================
-# TC-E01 ~ TC-E05: 搜索原语
+# TC-E01 ~ TC-E05: 查询原语
 # ============================================================================
 
-def test_search_by_keyword(backend):
-    """TC-E01: 关键词搜索"""
+def test_find_by_keyword(backend):
+    """TC-E01: 关键词查询"""
     backend.add_bug(title="test", phenomenon="", keywords=["XYZ123"], verified=True)
-    results = backend.search_by_keyword("XYZ123", limit=10)
+    results = backend.find_by_keyword("XYZ123", limit=10)
     assert len(results) >= 1
 
 
-def test_search_by_keyword_no_result(backend):
-    """TC-E02: 关键词搜索无结果"""
-    results = backend.search_by_keyword("不存在关键词ABCXYZ", limit=10)
+def test_find_by_keyword_no_result(backend):
+    """TC-E02: 关键词查询无结果"""
+    results = backend.find_by_keyword("不存在关键词ABCXYZ", limit=10)
     assert len(results) == 0
 
 
-def test_search_recent(backend):
-    """TC-E03: 最近创建搜索"""
+def test_find_by_created_after(backend):
+    """TC-E03: 最近创建查询"""
     backend.add_bug(title="最近", phenomenon="", verified=True)
-    results = backend.search_recent(days=7, limit=10)
+    results = backend.find_by_created_after(days=7, limit=10)
     assert len(results) >= 1
 
 
-def test_search_high_score(backend):
-    """TC-E04: 高分搜索"""
+def test_find_by_min_score(backend):
+    """TC-E04: 高分查询"""
     backend.add_bug(title="高分", phenomenon="", verified=True,
                    scores={"importance": 10, "complexity": 10, "scope": 10,
                            "difficulty": 10, "occurrences": 0, "emotion": 0, "prevention": 10})
-    results = backend.search_high_score(min_score=30.0, limit=10)
+    results = backend.find_by_min_score(min_score=30.0, limit=10)
     assert len(results) >= 1
     assert all(r["score"] >= 30.0 for r in results)
 
 
-def test_search_top_critical(backend):
-    """TC-E05: 最严重搜索"""
+def test_find_all_sorted(backend):
+    """TC-E05: 最严重查询"""
     backend.add_bug(title="严重", phenomenon="", verified=False)
-    results = backend.search_top_critical(limit=10)
+    results = backend.find_all_sorted(limit=10)
     assert len(results) >= 1
 
 
-def test_search_by_module_patterns(backend):
-    """TC-E06: 模块模式搜索"""
+def test_find_by_pattern(backend):
+    """TC-E06: 模块模式查询"""
     bug_id, _ = backend.add_bug(
         title="模块测试",
         phenomenon="",
         verified=True,
         module_patterns=["src/modules/*"],
     )
-    results = backend.search_by_module_patterns("src/modules/auth.ts", limit=10)
+    results = backend.find_by_pattern("src/modules/auth.ts", limit=10)
     assert any(r["id"] == bug_id for r in results)
 
 
-def test_search_by_module_patterns_no_match(backend):
+def test_find_by_pattern_no_match(backend):
     """TC-E07: 模块模式无匹配"""
     backend.add_bug(title="nomatch", phenomenon="", verified=True, module_patterns=["xyz/*"])
-    results = backend.search_by_module_patterns("auth/login.ts", limit=10)
+    results = backend.find_by_pattern("auth/login.ts", limit=10)
     assert not any(r["title"] == "nomatch" for r in results)
 
 
@@ -328,21 +328,21 @@ def test_search_by_module_patterns_no_match(backend):
 # TC-F01 ~ TC-F03: 路径召回
 # ============================================================================
 
-def test_recall_by_path_exact(backend):
+def test_find_by_path_exact(backend):
     """TC-F01: 精确路径召回"""
     bug_id, _ = backend.add_bug(title="精确召回", phenomenon="", verified=True, paths=["src/auth/session.ts"])
-    results = backend.recall_by_path("src/auth/session.ts")
+    results = backend.find_by_path("src/auth/session.ts")
     assert any(r["id"] == bug_id for r in results)
 
 
-def test_recall_by_path_unrelated(backend):
+def test_find_by_path_unrelated(backend):
     """TC-F02: 不相关路径不召回"""
     backend.add_bug(title="api问题", phenomenon="", verified=True, paths=["src/api/user.ts"])
-    results = backend.recall_by_path("src/auth/login.ts")
+    results = backend.find_by_path("src/auth/login.ts")
     assert not any(r["title"] == "api问题" for r in results)
 
 
-def test_recall_by_path_returns_impacts(backend):
+def test_find_by_path_returns_impacts(backend):
     """TC-F03: 召回结果包含 impacts 字段"""
     bug_id, _ = backend.add_bug(title="影响召回", phenomenon="", verified=True)
     backend.add_impact(
@@ -352,7 +352,7 @@ def test_recall_by_path_returns_impacts(backend):
         impact_type="regression",
         severity=5,
     )
-    results = backend.recall_by_path("any/path.ts", limit=10)
+    results = backend.find_by_path("any/path.ts", limit=10)
     for r in results:
         if r['id'] == bug_id:
             assert 'impacts' in r
@@ -377,15 +377,8 @@ def test_count_bugs(backend):
     assert count >= 1
 
 
-def test_check_bug_paths_valid(backend):
-    """TC-G03: 检查有效路径"""
-    bug_id, _ = backend.add_bug(title="有效路径", phenomenon="", verified=True)
-    result = backend.check_bug_paths(bug_id)
-    assert result == []
-
-
 def test_compact_file(backend):
-    """TC-G04: 压缩文件"""
+    """TC-G03: 压缩文件"""
     # 添加一些数据
     bug_id, _ = backend.add_bug(title="压缩测试", phenomenon="", verified=True)
     backend.update_bug(bug_id, status="invalid")
@@ -398,7 +391,7 @@ def test_compact_file(backend):
 # TC-H01 ~ TC-H02: 路径迁移（后端层）
 # ============================================================================
 
-def test_migrate_bug_paths_after_refactor(backend):
+def test_migrate_paths(backend):
     """TC-H01: 路径迁移"""
     bug_id, _ = backend.add_bug(
         title="路径迁移",
@@ -406,13 +399,13 @@ def test_migrate_bug_paths_after_refactor(backend):
         verified=True,
         paths=["src/auth/session.ts"]
     )
-    migrated = backend.recall_by_path("src/auth/session.ts", limit=99999)
+    migrated = backend.find_by_path("src/auth/session.ts", limit=99999)
     assert any(r["id"] == bug_id for r in migrated)
 
 
-def test_list_unverified_old(backend):
+def test_find_unverified_old(backend):
     """TC-H02: 列出长期未验证"""
     backend.add_bug(title="未验证旧bug", phenomenon="", verified=False)
-    results = backend.list_unverified_old(days=30, limit=10)
+    results = backend.find_unverified_old(days=30, limit=10)
     # 新添加的 bug 不会在 old list 里（因为是刚创建的）
     assert isinstance(results, list)

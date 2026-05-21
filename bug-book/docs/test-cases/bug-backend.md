@@ -10,27 +10,27 @@
 后端层（BugBackend）提供**原子操作方法**，供 BugService 业务编排层调用：
 1. `add_bug()` / `update_bug()` / `get_bug()` / `get_all_bugs()` - 基础 CRUD
 2. `add_impact()` / `delete_impact()` - 影响关系管理
-3. `search_by_keyword()` / `search_by_tag()` / `search_recent()` / `search_high_score()` / `search_top_critical()` / `search_recent_unverified()` / `search_by_status_and_score()` / `search_by_module_patterns()` - 搜索原语
-4. `recall_by_path()` - 路径召回
-5. `check_bug_paths()` / `count_bugs()` / `list_unverified_old()` / `compact_file()` - 辅助方法
+3. `find_by_keyword()` / `find_by_tag()` / `find_by_created_after()` / `find_by_min_score()` / `find_all_sorted()` / `find_by_created_after_unverified()` / `query()` / `find_by_pattern()` - 查询原语
+4. `find_by_path()` - 路径召回
+5. `count_bugs()` / `find_unverified_old()` / `compact_file()` - 辅助方法
 
-**总用例数**: **35 个测试函数**
+**总用例数**: **34 个测试函数**
 
 ---
 
 ## 用例统计
 
-| 分类 | 用例数 | 编号区间 |
-|------|--------|----------|
-| add_bug 新增记录 | 8 | TC-A01 ~ TC-A08 |
-| update_bug 更新记录 | 6 | TC-B01 ~ TC-B06 |
-| 软删除 | 2 | TC-C01 ~ TC-C02 |
-| 影响关系管理 | 3 | TC-D01 ~ TC-D03 |
-| 搜索原语 | 7 | TC-E01 ~ TC-E07 |
-| 路径召回 | 3 | TC-F01 ~ TC-F03 |
-| 辅助方法 | 4 | TC-G01 ~ TC-G04 |
-| 路径迁移/列表 | 2 | TC-H01 ~ TC-H02 |
-| **总计** | **35** | |
+| 分类 | 用例数 | 编号区间                    |
+|------|--------|-------------------------|
+| add_bug 新增记录 | 8 | TC-A01 ~ TC-A08         |
+| update_bug 更新记录 | 6 | TC-B01 ~ TC-B06         |
+| 软删除 | 2 | TC-C01 ~ TC-C02         |
+| 影响关系管理 | 3 | TC-D01 ~ TC-D03         |
+| 查询原语 | 7 | TC-E01 ~ TC-E07         |
+| 路径召回 | 3 | TC-F01 ~ TC-F03         |
+| 辅助方法 | 3 | TC-G01 ~ TC-G03 |
+| 路径迁移/列表 | 2 | TC-H01 ~ TC-H02         |
+| **总计** | **34** |                         |
 
 ---
 
@@ -81,17 +81,17 @@
 
 ---
 
-## TC-E01 ~ TC-E07：搜索原语
+## TC-E01 ~ TC-E07：查询原语
 
 | 用例编号 | 测试点描述 | 输入 | 预期 |
 |---------|-----------|------|------|
-| TC-E01 | 关键词搜索 | search_by_keyword("XYZ123", limit=10) | 返回匹配的 bugs |
-| TC-E02 | 关键词搜索无结果 | search_by_keyword("不存在", limit=10) | 返回 [] |
-| TC-E03 | 最近创建搜索 | search_recent(days=7, limit=10) | 返回最近创建的 |
-| TC-E04 | 高分搜索 | search_high_score(min_score=30, limit=10) | score>=30 |
-| TC-E05 | 最严重搜索 | search_top_critical(limit=10) | 返回最严重的 |
-| TC-E06 | 模块模式搜索 | search_by_module_patterns("src/modules/*") | 模式匹配 |
-| TC-E07 | 模块模式无匹配 | search_by_module_patterns("xyz/*") | 返回 [] |
+| TC-E01 | 关键词查询 | find_by_keyword("XYZ123", limit=10) | 返回匹配的 bugs |
+| TC-E02 | 关键词查询无结果 | find_by_keyword("不存在", limit=10) | 返回 [] |
+| TC-E03 | 最近创建查询 | find_by_created_after(days=7, limit=10) | 返回最近创建的 |
+| TC-E04 | 高分查询 | find_by_min_score(min_score=30, limit=10) | score>=30 |
+| TC-E05 | 最严重查询 | find_all_sorted(limit=10) | 返回最严重的 |
+| TC-E06 | 模块模式查询 | find_by_pattern("src/modules/*") | 模式匹配 |
+| TC-E07 | 模块模式无匹配 | find_by_pattern("xyz/*") | 返回 [] |
 
 ---
 
@@ -99,20 +99,19 @@
 
 | 用例编号 | 测试点描述 | 输入 | 预期 |
 |---------|-----------|------|------|
-| TC-F01 | 精确路径召回 | recall_by_path("src/auth/session.ts") | 召回匹配的 bug |
+| TC-F01 | 精确路径召回 | find_by_path("src/auth/session.ts") | 召回匹配的 bug |
 | TC-F02 | 不相关路径不召回 | 存储 api 问题，查询 auth | 无召回 |
 | TC-F03 | 召回结果含 impacts | 存储 impacts 后召回 | 结果包含 impacts 字段 |
 
 ---
 
-## TC-G01 ~ TC-G04：辅助方法
+## TC-G01 ~ TC-G03：辅助方法
 
-| 用例编号 | 测试点描述 | 输入 | 预期 |
-|---------|-----------|------|------|
+| 用例编号   | 测试点描述 | 输入 | 预期 |
+|--------|-----------|------|------|
 | TC-G01 | 获取所有 bugs | get_all_bugs() | 返回 dict[id->bug] |
 | TC-G02 | 统计 bug 总数 | count_bugs() | 返回 >=1 的整数 |
-| TC-G03 | 检查有效路径 | check_bug_paths(id) | 返回 [] |
-| TC-G04 | 压缩文件 | compact_file() | 返回清理数量 |
+| TC-G03 | 压缩文件 | compact_file() | 返回清理数量 |
 
 ---
 
@@ -120,8 +119,8 @@
 
 | 用例编号 | 测试点描述 | 输入 | 预期 |
 |---------|-----------|------|------|
-| TC-H01 | 路径迁移召回 | recall_by_path 传入迁移路径 | 召回迁移后的 bug |
-| TC-H02 | 列出长期未验证 | list_unverified_old(days=30, limit=10) | 返回未验证列表 |
+| TC-H01 | 路径迁移召回 | find_by_path 传入迁移路径 | 召回迁移后的 bug |
+| TC-H02 | 列出长期未验证 | find_unverified_old(days=30, limit=10) | 返回未验证列表 |
 
 ---
 
@@ -133,8 +132,3 @@ python -m pytest tests/test_bug_backend.py -v
 ```
 
 ---
-
-## 相关文档
-
-- [BugService 单元测试](./bug-service.md) - `tests/test_bug_service.py`
-- [MCP Server E2E 测试](./mcp-server-e2e.md) - `tests/test_mcp_server_e2e.py`

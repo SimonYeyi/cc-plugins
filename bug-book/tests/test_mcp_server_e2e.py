@@ -37,7 +37,7 @@ def cleanup_test_data(temp_dir: str):
 # MCP Server 测试
 # ============================================================================
 
-def run_mcp_test(storage_type: str, temp_dir: str):
+def run_mcp_test(storage_type: str, transcript_path: str):
     """通过子进程运行 MCP Server 并测试"""
     print(f"\n{'='*60}")
     print(f"测试 {storage_type.upper()} 后端 (MCP stdio)")
@@ -203,7 +203,25 @@ def run_mcp_test(storage_type: str, temp_dir: str):
         }))
 
         # ============================================================
-        # 6. save_bugs - increment_scores 模式
+        # 6. save_bugs - remove_paths 模式 (TC-SB03)
+        # ============================================================
+        test("save_bugs/add_paths_for_remove", lambda: call_tool('save_bugs', {
+            'bugs': [{
+                'mode': 'add_paths',
+                'id': bug_id,
+                'paths': [{'file': 'remove_me.py', 'functions': ['g1']}]
+            }]
+        }))
+        test("save_bugs/remove_paths", lambda: call_tool('save_bugs', {
+            'bugs': [{
+                'mode': 'remove_paths',
+                'id': bug_id,
+                'paths': [{'file': 'remove_me.py'}]
+            }]
+        }))
+
+        # ============================================================
+        # 7. save_bugs - increment_scores / decrement_scores 模式
         # ============================================================
         test("save_bugs/increment_scores", lambda: call_tool('save_bugs', {
             'bugs': [{
@@ -213,8 +231,16 @@ def run_mcp_test(storage_type: str, temp_dir: str):
             }]
         }))
 
+        test("save_bugs/decrement_scores (TC-SB06-02)", lambda: call_tool('save_bugs', {
+            'bugs': [{
+                'mode': 'decrement_scores',
+                'id': bug_id,
+                'scores': {'occurrences': 0.5}
+            }]
+        }))
+
         # ============================================================
-        # 7. save_bugs - add_impacts 模式
+        # 8. save_bugs - add_impacts 模式
         # ============================================================
         test("save_bugs/add_impacts", lambda: call_tool('save_bugs', {
             'bugs': [{
@@ -230,7 +256,66 @@ def run_mcp_test(storage_type: str, temp_dir: str):
         }))
 
         # ============================================================
-        # 8. save_bugs - delete 模式（软删除）
+        # 9. save_bugs - 批量混合操作 (TC-SB08)
+        # ============================================================
+        test("save_bugs/batch_mixed (TC-SB08)", lambda: call_tool('save_bugs', {
+            'bugs': [
+                {'mode': 'add', 'title': '批量新增1', 'phenomenon': '现象1'},
+                {'mode': 'add', 'title': '批量新增2', 'phenomenon': '现象2'},
+            ]
+        }))
+
+        # ============================================================
+        # 10. search_bugs - 各种模式
+        # ============================================================
+        test("search_bugs/keyword", lambda: call_tool('search_bugs', {
+            'mode': 'keyword',
+            'keyword': '测试'
+        }))
+
+        test("search_bugs/tag (TC-SR02)", lambda: call_tool('search_bugs', {
+            'mode': 'tag',
+            'tag': 'test'
+        }))
+
+        test("search_bugs/recent", lambda: call_tool('search_bugs', {
+            'mode': 'recent',
+            'days': 7
+        }))
+
+        test("search_bugs/high_score", lambda: call_tool('search_bugs', {
+            'mode': 'high_score',
+            'min_score': 0
+        }))
+
+        test("search_bugs/critical", lambda: call_tool('search_bugs', {
+            'mode': 'critical',
+            'limit': 5
+        }))
+
+        test("search_bugs/unverified (TC-SR06)", lambda: call_tool('search_bugs', {
+            'mode': 'unverified',
+            'days': 30
+        }))
+
+        test("search_bugs/custom", lambda: call_tool('search_bugs', {
+            'mode': 'custom',
+            'status': 'active',
+            'min_score': 0
+        }))
+
+        test("search_bugs/module (TC-SR08)", lambda: call_tool('search_bugs', {
+            'mode': 'module',
+            'pattern': 'src/*'
+        }))
+
+        # ============================================================
+        # 11. get_bug_detail - 查询不存在 (TC-GD02)
+        # ============================================================
+        test("get_bug_detail/nonexistent (TC-GD02)", lambda: call_tool('get_bug_detail', {'bug_id': 99999}))
+
+        # ============================================================
+        # 12. save_bugs - delete 模式（软删除）
         # ============================================================
         test("save_bugs/delete", lambda: call_tool('save_bugs', {
             'bugs': [{
@@ -240,14 +325,41 @@ def run_mcp_test(storage_type: str, temp_dir: str):
         }))
 
         # ============================================================
-        # 9. organize_bugs
+        # 13. organize_bugs
         # ============================================================
         test("organize_bugs", lambda: call_tool('organize_bugs', {}))
+
+        # ============================================================
+        # 14. Hook 函数测试 (TC-HK01 ~ TC-HK07)
+        # ============================================================
+        test("recall_for_hook/normal (TC-HK01)", lambda: call_tool('recall_for_hook', {
+            'file_path': str(Path(__file__).parent.parent / 'mcp' / 'mcp_server.py'),
+            'transcript_path': transcript_path,
+            'limit': 5
+        }))
+
+        test("recall_for_hook/no_match (TC-HK04)", lambda: call_tool('recall_for_hook', {
+            'file_path': '/nonexistent/path/file.py',
+            'transcript_path': transcript_path,
+            'limit': 5
+        }))
+
+        test("migrate_path_for_hook/mv (TC-HK05)", lambda: call_tool('migrate_path_for_hook', {
+            'command': 'mv src/old.ts src/new.ts'
+        }))
+
+        test("migrate_path_for_hook/git_mv (TC-HK06)", lambda: call_tool('migrate_path_for_hook', {
+            'command': 'git mv src/old.ts src/new.ts'
+        }))
+
+        test("migrate_path_for_hook/non_mv (TC-HK07)", lambda: call_tool('migrate_path_for_hook', {
+            'command': 'echo hello'
+        }))
 
     finally:
         proc.terminate()
         proc.wait(timeout=5)
-        cleanup_test_data(temp_dir)
+        cleanup_test_data(Path(transcript_path).parent)
 
     print(f"\n{storage_type.upper()} 后端测试结果: {len(errors)} 个错误")
     for name, error in errors:
@@ -267,7 +379,7 @@ def main():
     print(f"✓ 测试目录: {temp_dir}")
 
     # 测试 JSONL 后端
-    jsonl_errors = run_mcp_test("jsonl", temp_dir)
+    jsonl_errors = run_mcp_test("jsonl", transcript_path)
 
     # 总结
     print(f"\n{'='*60}")

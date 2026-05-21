@@ -229,12 +229,76 @@ def test_save_bugs_add_paths_merge(service):
 
 
 # ============================================================================
-# TC-INC01: save_bugs - increment_scores 模式
+# TC-P03 ~ TC-P05: save_bugs - remove_paths / replace_paths 模式
+# ============================================================================
+
+def test_save_bugs_remove_paths_entire_file(service):
+    """TC-P03: save_bugs remove_paths 模式 - 移除整个 file"""
+    add_result = service.save_bugs([{
+        'mode': 'add',
+        'title': '路径移除测试',
+        'phenomenon': '',
+        'paths': [{'file': 'src/a.ts', 'functions': ['f1', 'f2']}, {'file': 'src/b.ts', 'functions': []}]
+    }])
+    bug_id = add_result['results'][0]['id']
+
+    service.save_bugs([{
+        'mode': 'remove_paths',
+        'id': bug_id,
+        'paths': [{'file': 'src/a.ts'}]
+    }])
+    detail = service.get_bug_detail(bug_id)
+    path_files = [p.get('file') if isinstance(p, dict) else p for p in detail['paths']]
+    assert 'src/a.ts' not in path_files
+    assert 'src/b.ts' in path_files
+
+
+def test_save_bugs_remove_paths_partial_functions(service):
+    """TC-P04: save_bugs remove_paths 模式 - 只移除部分 functions"""
+    add_result = service.save_bugs([{
+        'mode': 'add',
+        'title': '函数移除测试',
+        'phenomenon': '',
+        'paths': [{'file': 'src/a.ts', 'functions': ['f1', 'f2', 'f3']}]
+    }])
+    bug_id = add_result['results'][0]['id']
+
+    service.save_bugs([{
+        'mode': 'remove_paths',
+        'id': bug_id,
+        'paths': [{'file': 'src/a.ts', 'functions': ['f1']}]
+    }])
+    detail = service.get_bug_detail(bug_id)
+    assert detail['paths'][0]['functions'] == ['f2', 'f3']
+
+
+def test_save_bugs_replace_paths(service):
+    """TC-P05: save_bugs replace_paths 模式 - 替换整个 paths 列表"""
+    add_result = service.save_bugs([{
+        'mode': 'add',
+        'title': '路径替换测试',
+        'phenomenon': '',
+        'paths': ['src/old/a.ts', 'src/old/b.ts']
+    }])
+    bug_id = add_result['results'][0]['id']
+
+    service.save_bugs([{
+        'mode': 'replace_paths',
+        'id': bug_id,
+        'paths': [{'file': 'src/new/c.ts', 'functions': ['main']}]
+    }])
+    detail = service.get_bug_detail(bug_id)
+    assert len(detail['paths']) == 1
+    assert detail['paths'][0]['file'] == 'src/new/c.ts'
+
+
+# ============================================================================
+# TC-INC01 ~ TC-INC03: save_bugs - increment/decrement_scores 模式
 # ============================================================================
 
 def test_save_bugs_increment_scores(service):
     """TC-INC01: save_bugs increment_scores 模式 - 累加分数"""
-    add_result = service.save_bugs([{'mode': 'add', 'title': '分数测试', 'phenomenon': '', 'scores': {'occurrences': 0}}])
+    add_result = service.save_bugs([{'mode': 'add', 'title': '分数累加测试', 'phenomenon': '', 'scores': {'occurrences': 0}}])
     bug_id = add_result['results'][0]['id']
 
     service.save_bugs([{'mode': 'increment_scores', 'id': bug_id, 'scores': {'occurrences': 1.0}}])
@@ -245,8 +309,122 @@ def test_save_bugs_increment_scores(service):
     assert detail["scores"]["occurrences"] == 3.0
 
 
+def test_save_bugs_decrement_scores(service):
+    """TC-INC02: save_bugs decrement_scores 模式 - 分数递减"""
+    add_result = service.save_bugs([{'mode': 'add', 'title': '分数扣减测试', 'phenomenon': '', 'scores': {'occurrences': 5.0}}])
+    bug_id = add_result['results'][0]['id']
+
+    service.save_bugs([{'mode': 'decrement_scores', 'id': bug_id, 'scores': {'occurrences': 2.0}}])
+    detail = service.get_bug_detail(bug_id)
+    assert detail["scores"]["occurrences"] == 3.0
+
+
+def test_save_bugs_decrement_scores_to_negative(service):
+    """TC-INC03: save_bugs decrement_scores 模式 - 扣减为负数"""
+    add_result = service.save_bugs([{'mode': 'add', 'title': '分数负数测试', 'phenomenon': '', 'scores': {'occurrences': 1.0}}])
+    bug_id = add_result['results'][0]['id']
+
+    service.save_bugs([{'mode': 'decrement_scores', 'id': bug_id, 'scores': {'occurrences': 5.0}}])
+    detail = service.get_bug_detail(bug_id)
+    assert detail["scores"]["occurrences"] == -4.0
+
+
 # ============================================================================
-# TC-IMP01: save_bugs - add_impacts 模式
+# TC-EDGE01 ~ TC-EDGE08: 边界情况测试
+# ============================================================================
+
+def test_save_bugs_add_paths_empty_list(service):
+    """TC-EDGE01: add_paths 传空列表，保留原 paths"""
+    add_result = service.save_bugs([{
+        'mode': 'add',
+        'title': '空列表测试',
+        'phenomenon': '',
+        'paths': [{'file': 'src/a.ts', 'functions': ['f1']}]
+    }])
+    bug_id = add_result['results'][0]['id']
+
+    service.save_bugs([{'mode': 'add_paths', 'id': bug_id, 'paths': []}])
+    detail = service.get_bug_detail(bug_id)
+    assert len(detail['paths']) == 1
+
+
+def test_save_bugs_remove_paths_nonexistent(service):
+    """TC-EDGE02: remove_paths 传不存在的 path，无效果"""
+    add_result = service.save_bugs([{
+        'mode': 'add',
+        'title': '不存在路径测试',
+        'phenomenon': '',
+        'paths': [{'file': 'src/a.ts', 'functions': ['f1']}]
+    }])
+    bug_id = add_result['results'][0]['id']
+
+    service.save_bugs([{'mode': 'remove_paths', 'id': bug_id, 'paths': [{'file': 'src/nonexistent.ts'}]}])
+    detail = service.get_bug_detail(bug_id)
+    assert len(detail['paths']) == 1
+    assert detail['paths'][0]['file'] == 'src/a.ts'
+
+
+def test_save_bugs_update_fields_empty_raises(service):
+    """TC-EDGE03: update_fields 传空数据，抛出异常"""
+    add_result = service.save_bugs([{'mode': 'add', 'title': '空更新测试', 'phenomenon': ''}])
+    bug_id = add_result['results'][0]['id']
+
+    with pytest.raises(Exception):
+        service.save_bugs([{'mode': 'update_fields', 'id': bug_id}])
+
+
+def test_save_bugs_add_impacts_empty_list(service):
+    """TC-EDGE04: add_impacts 传空列表，静默跳过"""
+    add_result = service.save_bugs([{'mode': 'add', 'title': '空影响测试', 'phenomenon': ''}])
+    bug_id = add_result['results'][0]['id']
+
+    service.save_bugs([{'mode': 'add_impacts', 'id': bug_id, 'impacts': []}])
+    detail = service.get_bug_detail(bug_id)
+    assert len(detail.get('impacts', [])) == 0
+
+
+def test_save_bugs_increment_scores_new_dimension(service):
+    """TC-EDGE05: increment_scores 新增维度，从 0 开始"""
+    add_result = service.save_bugs([{'mode': 'add', 'title': '新维度测试', 'phenomenon': '', 'scores': {'importance': 5}}])
+    bug_id = add_result['results'][0]['id']
+
+    service.save_bugs([{'mode': 'increment_scores', 'id': bug_id, 'scores': {'new_dim': 3.0}}])
+    detail = service.get_bug_detail(bug_id)
+    assert detail['scores'].get('new_dim') == 3.0
+
+
+def test_save_bugs_remove_keywords_nonexistent(service):
+    """TC-EDGE06: remove_keywords 传不存在项，无效果"""
+    add_result = service.save_bugs([{'mode': 'add', 'title': '不存在关键词测试', 'phenomenon': '', 'keywords': ['k1', 'k2']}])
+    bug_id = add_result['results'][0]['id']
+
+    service.save_bugs([{'mode': 'remove_keywords', 'id': bug_id, 'keywords': ['k999']}])
+    detail = service.get_bug_detail(bug_id)
+    assert set(detail['keywords']) == {'k1', 'k2'}
+
+
+def test_save_bugs_remove_module_patterns_nonexistent(service):
+    """TC-EDGE07: remove_module_patterns 传不存在项，无效果"""
+    add_result = service.save_bugs([{'mode': 'add', 'title': '不存在模块测试', 'phenomenon': '', 'module_patterns': ['auth/*', 'api/*']}])
+    bug_id = add_result['results'][0]['id']
+
+    service.save_bugs([{'mode': 'remove_module_patterns', 'id': bug_id, 'module_patterns': ['nonexistent/*']}])
+    detail = service.get_bug_detail(bug_id)
+    assert set(detail['module_patterns']) == {'auth/*', 'api/*'}
+
+
+def test_save_bugs_replace_module_patterns(service):
+    """TC-EDGE08: replace_module_patterns 完全替换"""
+    add_result = service.save_bugs([{'mode': 'add', 'title': '模块替换测试', 'phenomenon': '', 'module_patterns': ['old/*']}])
+    bug_id = add_result['results'][0]['id']
+
+    service.save_bugs([{'mode': 'replace_module_patterns', 'id': bug_id, 'module_patterns': ['new/*', 'other/*']}])
+    detail = service.get_bug_detail(bug_id)
+    assert set(detail['module_patterns']) == {'new/*', 'other/*'}
+
+
+# ============================================================================
+# TC-IMP01 ~ TC-IMP02: save_bugs - add/remove_impacts 模式
 # ============================================================================
 
 def test_save_bugs_add_impacts(service):
@@ -267,6 +445,61 @@ def test_save_bugs_add_impacts(service):
     detail = service.get_bug_detail(bug_id)
     assert len(detail["impacts"]) == 1
     assert detail["impacts"][0]["impact_type"] == "regression"
+
+
+def test_save_bugs_remove_impacts(service):
+    """TC-IMP02: save_bugs remove_impacts 模式 - 移除影响"""
+    add_result = service.save_bugs([{'mode': 'add', 'title': '移除影响测试', 'phenomenon': ''}])
+    bug_id = add_result['results'][0]['id']
+
+    service.save_bugs([{
+        'mode': 'add_impacts',
+        'id': bug_id,
+        'impacts': [
+            {'solution_change': 's1', 'impact_description': 'd1', 'impact_type': 'regression', 'severity': 5},
+            {'solution_change': 's2', 'impact_description': 'd2', 'impact_type': 'side_effect', 'severity': 3}
+        ]
+    }])
+    detail = service.get_bug_detail(bug_id)
+    impact_id = detail['impacts'][0]['id']
+
+    service.save_bugs([{'mode': 'remove_impacts', 'id': bug_id, 'impact_ids': [impact_id]}])
+    detail = service.get_bug_detail(bug_id)
+    assert len(detail['impacts']) == 1
+
+
+# ============================================================================
+# TC-DEDUP01 ~ TC-DEDUP03: save_bugs - 去重测试
+# ============================================================================
+
+def test_save_bugs_add_keywords_duplicate(service):
+    """TC-DEDUP01: add_keywords 重复关键词自动去重"""
+    add_result = service.save_bugs([{'mode': 'add', 'title': '关键词去重测试', 'phenomenon': '', 'keywords': ['k1']}])
+    bug_id = add_result['results'][0]['id']
+
+    service.save_bugs([{'mode': 'add_keywords', 'id': bug_id, 'keywords': ['k2', 'k1', 'k3']}])
+    detail = service.get_bug_detail(bug_id)
+    assert set(detail['keywords']) == {'k1', 'k2', 'k3'}
+
+
+def test_save_bugs_add_tags_duplicate(service):
+    """TC-DEDUP02: add_tags 重复标签自动去重"""
+    add_result = service.save_bugs([{'mode': 'add', 'title': '标签去重测试', 'phenomenon': '', 'tags': ['t1']}])
+    bug_id = add_result['results'][0]['id']
+
+    service.save_bugs([{'mode': 'add_tags', 'id': bug_id, 'tags': ['t2', 't1', 't3']}])
+    detail = service.get_bug_detail(bug_id)
+    assert set(detail['tags']) == {'t1', 't2', 't3'}
+
+
+def test_save_bugs_add_module_patterns_duplicate(service):
+    """TC-DEDUP03: add_module_patterns 重复模式自动去重"""
+    add_result = service.save_bugs([{'mode': 'add', 'title': '模式去重测试', 'phenomenon': '', 'module_patterns': ['auth/*']}])
+    bug_id = add_result['results'][0]['id']
+
+    service.save_bugs([{'mode': 'add_module_patterns', 'id': bug_id, 'module_patterns': ['api/*', 'auth/*', 'src/*']}])
+    detail = service.get_bug_detail(bug_id)
+    assert set(detail['module_patterns']) == {'auth/*', 'api/*', 'src/*'}
 
 
 # ============================================================================
@@ -435,11 +668,11 @@ def test_recall_by_path_returns_impacts(service):
 
 
 # ============================================================================
-# TC-M01 ~ TC-M03: migrate_bug_paths_after_refactor 接口
+# TC-M01 ~ TC-M03: migrate_paths 接口
 # ============================================================================
 
 def test_migrate_paths_exact_match(service):
-    """TC-M01: migrate_bug_paths_after_refactor - 精确路径迁移"""
+    """TC-M01: migrate_paths - 精确路径迁移"""
     add_result = service.save_bugs([{
         'mode': 'add',
         'title': '路径迁移',
@@ -448,7 +681,7 @@ def test_migrate_paths_exact_match(service):
     }])
     bug_id = add_result['results'][0]['id']
 
-    migrated = service.migrate_bug_paths_after_refactor(
+    migrated = service.migrate_paths(
         'src/auth/session.ts',
         'src/modules/auth/session.ts'
     )
@@ -460,8 +693,8 @@ def test_migrate_paths_exact_match(service):
 
 
 def test_migrate_paths_no_match(service):
-    """TC-M02: migrate_bug_paths_after_refactor - 无匹配时返回空"""
-    migrated = service.migrate_bug_paths_after_refactor(
+    """TC-M02: migrate_paths - 无匹配时返回空"""
+    migrated = service.migrate_paths(
         'nonexistent/path.ts',
         'new/path.ts'
     )
@@ -469,7 +702,7 @@ def test_migrate_paths_no_match(service):
 
 
 def test_migrate_paths_with_module_pattern(service):
-    """TC-M03: migrate_bug_paths_after_refactor - 同时迁移 module_patterns"""
+    """TC-M03: migrate_paths - 同时迁移 module_patterns"""
     add_result = service.save_bugs([{
         'mode': 'add',
         'title': '模块迁移',
@@ -478,7 +711,7 @@ def test_migrate_paths_with_module_pattern(service):
     }])
     bug_id = add_result['results'][0]['id']
 
-    migrated = service.migrate_bug_paths_after_refactor(
+    migrated = service.migrate_paths(
         'src/auth/login.ts',
         'src/modules/auth/login.ts'
     )

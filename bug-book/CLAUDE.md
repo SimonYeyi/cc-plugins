@@ -20,11 +20,11 @@
 MCP Server → BugService (业务编排) → BugBackend (原子操作) → JSONLBackend (存储实现)
 ```
 
-| 层级    | 文件 | 职责 |
-|-------|------|------|
-| 业务编排层 | `mcp/bug_service.py` | 6 个公共接口：save_bugs, search_bugs, get_bug_detail, recall_by_path, migrate_bug_paths_after_refactor, organize_bugs |
-| 存储接口层 | `mcp/bug_backend.py` | add_bug, update_bug, get_bug, search_*, recall_by_path 等原子方法 |
-| 存储实现层 | `mcp/jsonl_backend.py` | JSONL 文件持久化 |
+| 层级    | 文件 | 职责                                                                                           |
+|-------|------|----------------------------------------------------------------------------------------------|
+| 业务编排层 | `mcp/bug_service.py` | 6 个公共接口：save_bugs, search_bugs, organize_bugs, get_bug_detail, recall_by_path, migrate_paths |
+| 存储接口层 | `mcp/bug_backend.py` | add_bug, update_bug, get_bug, find_*, query 等原子方法                                            |
+| 存储实现层 | `mcp/jsonl_backend.py` | JSONL 文件持久化                                                                                  |
 
 ## 开发规范
 
